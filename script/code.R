@@ -184,8 +184,25 @@ tab_freq1(data_clean, c("sexe", "school_type", "parent_educ", "sleep_qual", "web
   kable(align = "l", padding= 2) |>
   row_spec(c(1, 5, 8, 15, 19, 22, 27, 30), bold= TRUE)
 
+
 ### Part 3 - Visualisation y vs Predictors ###
-# y vs variables quantitatives (Linéarité)
+# a. Distribution of y
+p_hist <- ggplot(data_clean, aes(x = y)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "dodgerblue", color = "white") +
+  geom_density(color = "red", linewidth = 1) +
+  labs(title = "Histogram and Density of Exam Score", x = "Score (y)", y = "Density") +
+  theme_minimal()
+
+p_box <- ggplot(data_clean, aes(y = y)) +
+  geom_boxplot(fill = "dodgerblue", outlier.color = "red") +
+  labs(title = "Boxplot of Exam Score", y = "Score (y)") +
+  theme_minimal()
+
+p_hist + p_box
+
+skewness(data_clean$y) # Skewness close to 0 => symmetry:  OK
+
+# b. y vs variables quantitatives (Linearity)
 data_clean |>
   select(y, age, study_hrs, sleep_hrs, attend_pct) |>
   pivot_longer(-y) |>
@@ -195,10 +212,10 @@ data_clean |>
   facet_wrap(~name, scales = "free_x") +
   theme_minimal()
 
-# y vs variables qualitatives (Boxplots)
+# b. y vs qualitative variables (Boxplots)
 data_clean |>
   select(y, sexe, school_type, sleep_qual, study_method, extra_act) |>
-  # Conversion en caractères pour permettre la combinaison dans pivot_longer
+  # On convertit tout sauf 'y' en character pour éviter le conflit de types
   mutate(across(-y, as.character)) |> 
   pivot_longer(
     cols = -y,
@@ -206,17 +223,43 @@ data_clean |>
     values_to = "value"
   ) |>
   ggplot(aes(x = value, y = y, fill = variable)) +
-  geom_boxplot(alpha = 0.7) +
-  facet_wrap(~ variable, scales = "free_x") +
+  geom_boxplot(alpha = 0.7, outlier.size = 1) +
+  facet_wrap(~ variable, scales = "free_x") + # free_x est crucial ici
   theme_bw() +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Distribution de l'examen score (y) par variable qualitative",
-       x = "Catégorie",
-       y = "Exam score")
+  theme(
+    legend.position = "none", 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    strip.text = element_text(face = "bold")
+  ) +
+  labs(
+    title = "Distribution of Exam Score (y) by Categorical Predictors",
+    x = "Category Level",
+    y = "Exam Score"
+  )
 
-# Exemple de comparaison [cite: 73, 75]
-mod_simple <- lm(y ~ age + sexe, data = data_clean)
-mod_complet <- lm(y ~ . -id -agecat -attend_pct_cat, data = data_clean)
+# c. Numeric-Numeric: Correlation Matrix
+data_clean |>
+  select(all_of(numeric_vars)) |>
+  correlation(method = "pearson") |>
+  summary(redundant = TRUE) |>
+  plot() +
+  theme_bw(base_size = 14) +
+  theme(legend.position = "bottom") +
+  labs(title = "Correlation Heatmap: Quantitative Predictors")
 
-# Comparaison
-compare_performance(mod_simple, mod_complet, metrics = "common")
+# c. Categorical-Categorical: Contingency & Association
+
+
+# c. Mixed
+
+
+### Part 4 - Assessment of monotone trends for ordinal predictors ###
+# Example for Sleep Quality
+p1 <- plot_monotone(data_clean, "sleep_qual", "Sleep Quality")
+
+# Example for Parental Education
+p2 <- plot_monotone(data_clean, "parent_educ", "Parental Education")
+library(patchwork)
+p1 / p2
+
+# Part 5 - Conclude EDA #

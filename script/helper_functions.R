@@ -260,4 +260,22 @@ scatter_plot <- function(data, x, y, size = 1, color = "black", ols_line = "red"
 }
 
 
+# Function to plot monotone trends
+plot_monotone <- function(data, var_name, label_name) {
+  data %>%
+    # Ensure we calculate the mean for each group to draw the trend line
+    group_by(!!sym(var_name)) %>%
+    mutate(mean_y = mean(y, na.rm = TRUE)) %>%
+    ungroup() %>%
+    ggplot(aes(x = !!sym(var_name), y = y)) +
+    geom_boxplot(fill = "steelblue", alpha = 0.2, outlier.alpha = 0.5) +
+    # The trend line connecting the means
+    stat_summary(fun = mean, geom = "line", aes(group = 1), color = "red", linewidth = 1) +
+    stat_summary(fun = mean, geom = "point", color = "red", size = 2) +
+    theme_minimal() +
+    labs(title = paste("Trend Analysis:", label_name),
+         subtitle = "Red line connects group means to assess monotonicity",
+         x = label_name, y = "Exam Score (y)")
+}
+
 
