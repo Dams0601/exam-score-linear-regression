@@ -652,7 +652,7 @@ cat("   - age: No clear functional form\n")
 cat("   → Implication: Use linear terms; no polynomial transformations needed\n\n")
 
 cat("5. COLLINEARITY ASSESSMENT\n")
-cat("   - Numeric predictors: Maximum |r| =", round(max_cor, 2), "(< 0.7 threshold)\n")
+cat("   - Numeric predictors: Maximum |r| =", round(max_cor, 2), "(Acceptable, near 0.7 threshold)\n")
 cat("   - Categorical: Maximum Cramér's V =", round(max_cramers, 2), "(< 0.5 threshold)\n")
 cat("   → Implication: Multicollinearity unlikely to be problematic\n\n")
 
@@ -730,18 +730,65 @@ data_clean |>
 # Part 2 - Multiple Regression Models
 # Model 1: Socio-demographic Baseline
 # Justification: Controls for non-modifiable structural factors
-m1_socio <- lm(y ~ age + sexe + school_type + web_access, data = data_clean)
+m1_socio <- lm(
+  y ~ age + sexe + school_type + web_access,
+  data = data_clean
+)
 
 # Model 2: Behavioral & Academic effort
 # Justification: EDA showed strong linear trends for study and attendance. 
 # We add them to see their effect while controlling for socio-demographics.
-m2_behavior <- update(m1_socio, . ~ . + study_hrs + sleep_hrs + attend_pct + sleep_qual + trav_time)
+m2_behavior <- lm(
+  y ~ school_type + web_access +
+    study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act + study_method,
+  data = data_clean
+)
 
-# Model 3: Full Contextual Model with Interaction
-# Justification: We test if 'study_method' efficiency depends on 'study_hrs'
-# and include parental/environmental factors.
-m3_full <- update(m2_behavior, . ~ . + parent_educ + web_access + 
-                    extra_act + study_method + study_hrs:study_method)
+m_C <- lm(
+  y ~ school_type + web_access +
+    study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act + study_method +
+    study_hrs:sleep_qual,
+  data = data_clean
+)
+
+m_D <- lm(
+  y ~ school_type + web_access +
+    study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act + study_method +
+    parent_educ:school_type,
+  data = data_clean
+)
+
+m_E <- lm(
+  y ~ school_type + web_access +
+    study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act + study_method +
+    study_hrs:sleep_qual +
+    parent_educ:school_type,
+  data = data_clean
+)
+
+m_F <- lm(
+  y ~ study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act +
+    study_hrs:sleep_qual +
+    parent_educ:school_type,
+  data = data_clean
+)
+
+m_G <- lm(
+  y ~ study_hrs + attend_pct +
+    sleep_qual + parent_educ +
+    study_hrs:sleep_qual,
+  data = data_clean
+)
 
 # Statistical comparison of models
 model_comp <- compare_performance(m1_socio, m2_behavior, m3_full, metrics = "common")
@@ -758,10 +805,47 @@ check_collinearity(m3_full) |> plot()
 
 
 # Part 4 - Interactions: include them only if motivated by a clear, testable hypothesis
+m_full_interactions <- lm(
+  y ~ age + sexe + school_type + web_access +
+    study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ +
+    extra_act + study_method +
+    
+    # Interactions effort
+    study_hrs:study_method +
+    study_hrs:web_access +
+    study_hrs:sleep_qual +
+    
+    # Interactions socio-contextuelles
+    parent_educ:school_type +
+    attend_pct:school_type,
+  data = data_clean
+)
+
+anova(m_E, m_full_interactions)
+anova(m_C, m_E)
+anova(m_D, m_E)
+anova(m_F, m_E)
+anova(m_G, m_E)
+Anova(m_full_interactions,  type = 2)
+Anova(m_full_interactions,  type = 3)
+
+
+
 
 
 # Part 5 - Compare candidate models using criteria covered in class/labs
-
+compare_performance(
+  m_full_interactions,
+  m1_socio,
+  m2_behavior,
+  m_C,
+  m_D,
+  m_E,
+  m_F,
+  m_G,
+  metrics = "common"
+)
 
 
 #############################################################
@@ -769,17 +853,18 @@ check_collinearity(m3_full) |> plot()
 #############################################################
 # Part 1 - Check final model
 # Assumptions [P1 - P4]
-p1 <- resid_vs_order(m3_full) # Residuals vs obs
-p2 <- resid_stand_hist(m3_full) # Histogram of standardized residuals
-p3 <- resid_stand_dens(m3_full) # Density of standardized residuals
-p4 <- resid_stand_qq(m3_full) # Normal Q–Q plot
+mod_final = m_E
+p1 <- resid_vs_order(mod_final) # Residuals vs obs
+p2 <- resid_stand_hist(mod_final) # Histogram of standardized residuals
+p3 <- resid_stand_dens(mod_final) # Density of standardized residuals
+p4 <- resid_stand_qq(mod_final) # Normal Q–Q plot
 
 p1 + p2 + p3 + p4
 
 # Outliers - Distance Cook
-check_outliers(m3_full, method = "cook") |> plot()
+check_outliers(mod_final, method = "cook") |> plot()
 
-resid_vs_fit(model = m3_full)
+resid_vs_fit(model = mod_final)
 
 # Part 2 - Issues (heteroskedasticity, nonlinearity, influential observations)
 
@@ -790,5 +875,5 @@ resid_vs_fit(model = m3_full)
 #################################################
 ### Section 5 -  Interpretation and inference ###
 #################################################
-
+summary(mod_final)
 
