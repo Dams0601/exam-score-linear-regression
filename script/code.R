@@ -43,6 +43,7 @@ set.seed(42)
 ### Part 1 - Import data ###
 data = read.csv(here("data", "project.csv"))
 head(data, n=10)
+datawizard::describe_distribution(data) |> kable()
 
 ### Part 2 -  Convert coded categorical variables into properly labelled factors ###
 # 1. Convert into factors
@@ -88,9 +89,8 @@ data_clean <- data |>
 
 ### Part 3 - Verification data integrity and plausibility ###
 # Check duplicate ID
-data_clean |>
-  count(`id`) |>
-  filter(n > 1)
+duplicates <- data_clean |> filter(duplicated(id))
+cat("Nombre de doublons :", nrow(duplicates))
 
 # Confirm plausible range
 summary(select(data_clean,
@@ -100,26 +100,42 @@ summary(select(data_clean,
                `sleep_hrs`,
                `attend_pct`))
 
+# Verification of NA
+na_count <- colSums(is.na(data_clean))
+cat("Les NA sont :", na_count[na_count > 0]) # Display only if some NA exist
 
-# Identify extreme values
-quant_vars <- data_clean |>
-  select(y, age, study_hrs, sleep_hrs, attend_pct)
-outlier_summary <- quant_vars |>
-  summarise(across(everything(), ~ {
-    q1 <- quantile(.x, 0.25, na.rm = TRUE)
-    q3 <- quantile(.x, 0.75, na.rm = TRUE)
-    iqr <- q3 - q1
-    sum(.x < (q1 - 1.5 * iqr) | .x > (q3 + 1.5 * iqr), na.rm = TRUE)
-  }))
-
-outlier_summary
+# Verification of values impossibles (ex: score < 0 or > 100)
+invalid_data <- data_clean |> 
+  filter(y < 0 | y > 100 | sleep_hrs > 24 | study_hrs > 168)
+nrow(invalid_data)
 
 
-
-# Visualization of data
+# Identify extreme values + visualization of outliers
 numeric_vars <- c("y", "age", "study_hrs", "sleep_hrs", "attend_pct")
 vlabels <- c("Exam score", "Age (years)", "Weekly study (hours)", 
              "Sleep duration (hours)", "School attendance (%)")
+
+data_clean |>
+  select(all_of(numeric_vars)) |>
+  set_names(vlabels) |> 
+  pivot_longer(everything(), names_to = "Variable", values_to = "Valeur") |>
+  ggplot(aes(x = Variable, y = Valeur, fill = Variable)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, alpha = 0.7) +
+  facet_wrap(~Variable, scales = "free") +
+  labs(title = "Analyse des valeurs extrêmes",
+       subtitle = "Les points rouges indiquent des outliers potentiels (méthode IQR)",
+       x = "", 
+       y = "Valeurs") +
+  theme(legend.position = "none",
+        strip.text = element_text(face = "bold", size = 10))
+
+# Filter to inspect extreme exam score values (y)
+# We use the IQR method to flag potential outliers for manual review
+outliers_y <- data_clean |> 
+  filter(y < (quantile(y, 0.25) - 1.5 * IQR(y)) | 
+           y > (quantile(y, 0.75) + 1.5 * IQR(y)))
+print(outliers_y)
+
 
 data_clean |>
   select(id, all_of(numeric_vars)) |>
@@ -142,6 +158,16 @@ ggplot(data_clean, aes(x = agecat, y = age)) +
 ggplot(data_clean, aes(x = attend_pct_cat, y = attend_pct)) +
   geom_boxplot(fill = "grey80") +
   labs(x = "Attendance category", y = "Attendance (%)")
+
+# Mathematical proof of redundancy using Spearman correlation (rank-based)
+age_redundancy <- cor(data_clean$age, as.numeric(data_clean$agecat), method = "spearman")
+attend_redundancy <- cor(data_clean$attend_pct, as.numeric(data_clean$attend_pct_cat), method = "spearman")
+
+cat("Correlation Age vs AgeCat:", age_redundancy, "\n")
+cat("Correlation Attend vs AttendCat:", attend_redundancy, "\n")
+
+# Rationale: Since correlations are near 1, including both would cause perfect multicollinearity.
+# We keep the continuous versions to preserve granular information.
 
 #######################
 ### Section 2 - EDA ###
