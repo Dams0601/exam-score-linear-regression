@@ -151,6 +151,19 @@ data_clean |>
   theme(strip.text = element_text(size = 11, face = "bold"))
 
 ### Part 4 - Redundant representations ###
+select(data_clean,-id) |>
+  relocate(y, .after = last_col()) |>
+  ggpairs(
+    lower= list(
+      continuous = wrap(
+        "points",
+        size = 1, shape = 21, fill = "white", color = "blue", alpha= 1
+      )
+    )
+  ) +
+  theme_bw(base_size = 14)
+
+
 ggplot(data_clean, aes(x = agecat, y = age)) +
   geom_boxplot(fill = "grey80") +
   labs(x = "Age category", y = "Age (years)")
@@ -263,3 +276,86 @@ library(patchwork)
 p1 / p2
 
 # Part 5 - Conclude EDA #
+
+
+
+
+###############################################
+### Section 3 - Building regression models ###
+###############################################
+
+# Part 1 - Simple regressions (Descriptive Baseline)
+# Define your list of predictors
+# 1. Quantitative Predictors
+quant_preds <- c("age", "study_hrs", "sleep_hrs", "attend_pct")
+
+data_clean |>
+  select(y, all_of(quant_preds)) |>
+  pivot_longer(cols = -y, names_to = "predictor", values_to = "value") |>
+  ggplot(aes(x = value, y = y)) +
+  facet_wrap(~predictor, scales = "free_x", ncol = 2) +
+  geom_point(size = 1.5, shape = 21, fill = "dodgerblue", color = "black", alpha = 0.3) +
+  # Adding the regression line (intuition building)
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  labs(x = "Predictor Value", y = "Exam Score (y)",
+       title = "Baseline Associations: Quantitative Variables") +
+  theme_bw(base_size = 12)
+
+# 2. Categorical Predictors
+cat_preds <- c("sexe", "school_type", "sleep_qual", "extra_act", "study_method")
+
+data_clean |>
+  select(y, all_of(cat_preds)) |>
+  # Ensure all predictors are treated as characters for pivoting
+  mutate(across(all_of(cat_preds), as.character)) |>
+  pivot_longer(all_of(cat_preds), names_to = "var", values_to = "value") |>
+  # Apply labels using the same logic as your Pok code
+  mutate(var = factor(var, levels = cat_preds, labels = vlabels(data_clean[, cat_preds]))) |>
+  # Shorten long labels (like study methods) if necessary
+  mutate(value = fct_relabel(factor(value), \(x) str_trunc(x, 15))) |>
+  ggplot(aes(x = y, y = value)) +
+  # Boxplot with thinner lines for a cleaner look
+  geom_boxplot(linewidth = 0.3, median.linewidth = 0.8, fill = "grey95") +
+  # Add mean point to anticipate regression coefficients
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(vars(var), scales = "free_y") +
+  labs(
+    x = "Exam Score (y)", 
+    y = NULL,
+    title = "Bivariate Intuition: Categorical Predictors vs Score",
+    subtitle = "Red diamonds represent the group mean (target of linear regression)"
+  ) +
+  theme_bw(base_size = 14) +
+  labs_pubr() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    axis.text.y = element_text(size = 9, face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+
+# Part 2 - Multiple Regression Models
+# Model 1: Socio-demographic Baseline
+# Justification: Controls for non-modifiable structural factors
+m1_socio <- lm(y ~ age + sexe + school_type, data = data_clean)
+
+# Model 2: Behavioral & Academic effort
+# Justification: EDA showed strong linear trends for study and attendance. 
+# We add them to see their effect while controlling for socio-demographics.
+m2_behavior <- update(m1_socio, . ~ . + study_hrs + sleep_hrs + attend_pct + sleep_qual)
+
+# Model 3: Full Contextual Model with Interaction
+# Justification: We test if 'study_method' efficiency depends on 'study_hrs'
+# and include parental/environmental factors.
+m3_full <- update(m2_behavior, . ~ . + parent_educ + web_access + 
+                    extra_act + study_method + study_hrs:study_method)
+
+# Statistical comparison of models
+model_comp <- compare_performance(m1_socio, m2_behavior, m3_full, metrics = "common")
+print(model_comp)
+
+# Visualization of the comparison
+plot(model_comp) + theme_minimal()
+
+# Check if our justified set of predictors is statistically sound
+check_collinearity(m3_full) |> plot()
