@@ -1,0 +1,102 @@
+---
+title: "Linear Models Project in R"
+subtitle: "M1–MIDO, 2025–2026"
+author:
+  - name: "Student Names"
+    affiliation: "Université / Program"
+date: last-modified
+lang: en
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    toc-title: "Contents"
+    number-sections: true
+    smooth-scroll: true
+    page-layout: full
+    linestretch: 1.2
+    fontsize: 125%
+    self-contained: true
+    df-print: default
+    code-fold: false
+    code-tools: false
+    code-line-numbers: false
+    code-overflow: scroll
+    code-copy: true
+    highlight-style: github
+    theme: cosmo
+    code-block-bg: "#F5F5F5" # Choose here https://www.w3schools.com/colors/colors_shades.asp
+    html-math-method: mathjax
+    fig-format: retina
+    fig-width: 13
+    fig-height: 7
+    fig-align: center
+    fig-pos: "H"
+    fig-cap-location: bottom
+    mainfont: "Source Sans Pro" # "Source Sans Pro" "Arial"  "Calibri"  "Cambria"  "Times New Roman"  "Georgia",  your favorite
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: false
+editor:
+  markdown:
+    wrap: 110
+    canonical: true
+knitr:
+  opts_chunk:
+    tidy: styler
+    comment: ''
+    dev: svg # ou png
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# Reproducibility
+set.seed(42)
+
+# Global options
+options(pillar.width = 130, width = 200, scipen = 999, digits = 5)
+
+# Add Packages here. Be careful of the ordering
+library(janitor)
+library(tidyverse) # always load it in last position
+```
+
+# Introduction
+
+blah blah blah
+
+# Section 2
+
+## Section 2.1
+
+We load the dataset
+
+```{r}
+raw_data <- read_csv("data/project.csv")
+raw_data
+```
+
+## Section 2.2
+
+Some variable distributions. Blah blah blah
+
+```{r}
+raw_data |> 
+  count(agecat)
+```
+
+```{r}
+raw_data |> 
+  tabyl(sleep_qual)
+```
+
+```{r}
+raw_data |> 
+  ggplot(aes(x = study_hrs)) +
+  geom_histogram(fill = "grey", color = "black", bins = 10)
+```
