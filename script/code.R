@@ -11,6 +11,7 @@ library("ggpubr")
 library("ggrepel")
 library("glue")
 library("gtsummary")
+library("here")
 library("insight")
 library("janitor")
 library("kableExtra")
@@ -30,7 +31,7 @@ library("scales")
 library("see")
 library("tidyverse")
 
-source("helper_functions.R")
+source(here("script", "helper_functions.R"))
 
 ###################################
 ### Section 1 - Data management ###
@@ -40,7 +41,7 @@ set.seed(42)
 
 
 ### Part 1 - Import data ###
-data = read_csv("../data/project.csv", show_col_types = F)
+data = read.csv(here("data", "project.csv"))
 head(data, n=10)
 
 ### Part 2 -  Convert coded categorical variables into properly labelled factors ###
