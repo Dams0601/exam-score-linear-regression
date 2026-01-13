@@ -2,7 +2,7 @@
 title: "Linear Models Project in R"
 subtitle: "M1–MIDO, 2025–2026"
 author:
-  - name: "Student Names"
+  - name: "BEN SAID Daniel ; DESCHILDRE Mateo ; ROY Damien"
     affiliation: "Université / Program"
 date: last-modified
 lang: en
@@ -68,16 +68,85 @@ library(tidyverse) # always load it in last position
 
 # Introduction
 
-blah blah blah
+## Contexte et problématique
 
-# Section 2
+Ce projet vise à prédire la performance académique des étudiants (mesurée par la variable `y`) en exploitant
+un ensemble de variables explicatives liées à leurs habitudes de vie, leur environnement d'apprentissage et
+leur contexte socio-éducatif. L'objectif principal de cette analyse est de construire un modèle de régression
+linéaire multiple capable de capturer les relations complexes entre les variables explicatives et la
+performance académique, tout en respectant les hypothèses du modèle linéaire et en assurant une bonne capacité
+de généralisation sur de nouvelles données.
 
-## Section 2.1
+## Présentation des données
 
-We load the dataset
+Le jeu de données utilisé dans cette étude comprend 5000 observations collectées auprès d'étudiants, avec un
+total de 15 variables couvrant différentes dimensions de leur parcours et de leur quotidien :
+
+Variables liées aux habitudes de vie et au bien-être :
+
+-   `sleep_hrs` : nombre d'heures de sommeil par nuit
+-   `sleep_qual` : qualité subjective du sommeil (échelle ordinale ou continue)
+-   `trav_time` : temps de trajet quotidien pour se rendre à l'école
+
+Variables liées aux habitudes d'étude :
+
+-   `study_hrs` : nombre d'heures d'étude hebdomadaires
+-   `study_method` : méthode d'étude privilégiée (variable catégorielle)
+-   `attend_pct` / `attend_pct_cat` : pourcentage de présence en cours
+
+Variables contextuelles et environnementales :
+
+-   `id` : Identifiant de l'étudiant
+-   `sexe` : Genre de l'étudiant (Female, Male, Other)
+-   `age` / `agecat` : Âge de l'étudiant en années (en catégorie)
+-   `school_type` : type d'établissement fréquenté (public/privé, par exemple)
+-   `web_access` : accès à Internet à domicile (oui/non)
+-   `parent_educ` : niveau d'éducation des parents (variable ordinale)
+-   `extra_act` : participation à des activités extrascolaires (nombre ou indicateur binaire)
+
+La variable dépendante y représente une mesure quantitative de la performance académique, qui pourrait
+correspondre à une moyenne générale, un score standardisé ou un résultat à un examen spécifique.
+
+## Hypothèses de recherche
+
+Sur la base de la litérrature existante en science de l'éducation et en psychologie cognitive, on peut
+formuler certaines hypothèses :
+
+1.  Effet non-linéaire du sommeil
+
+-   `sleep_hrs` présente un effet non-linéaire (quadratique) sur la performance académique;
+
+2.  Interaction entre quantité et qualité du travail
+
+-   L'effet du temps d'étude (`study_hrs`) sur la performance dépend de la qualité du sommeil (`sleep_qual`) ;
+
+3.  Interaction entre contexte familial et type d'établissement
+
+-   L'effet du niveau d'éducation des parents (`parent_educ`) sur la performance varie selon le type
+    d'établissement fréquenté (`school_type`);
+
+4.  Effets principaux attendus
+
+-   `attend_pct` : une présence régulière en cours devrait être positivement associée à la performance
+-   `web_access` : l'accès à Internet facilite l'accès aux ressources pédagogiques en ligne
+-   `extra_act` : la participation à des activités extrascolaires peut développer des compétences
+    transversales bénéfiques
+-   `trav_time` : un temps de trajet excessif pourrait avoir un effet négatif en réduisant le temps disponible
+    pour l'étude et le repos
+
+5.  Transformation logarithmique du temps d'étude
+
+-   Une transformation logarithmique de `study_hrs` peut mieux capturer la relation avec la performance,
+    reflétant des rendements décroissants.
+
+# Methodes
+
+## Gestion des données
+
+On charge la base de données
 
 ```{r}
-raw_data <- read_csv("data/project.csv")
+raw_data <- read_csv("../data/project.csv")
 raw_data
 ```
 
