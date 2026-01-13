@@ -33,9 +33,9 @@ library("tidyverse")
 
 source(here("script", "helper_functions.R"))
 
-###################################
-### Section 1 - Data management ###
-###################################
+####################################
+### Section 1 - Data management ####
+####################################
 
 ### Part 1 - Import data ###
 data = read.csv(here("data", "project.csv"))
