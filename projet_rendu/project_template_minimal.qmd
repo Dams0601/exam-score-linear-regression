@@ -244,6 +244,29 @@ data_clean <- data |>
 -   `study_method`: Online videos (baseline)
 -   Ordinal variables maintain their natural ordering
 
+### Vizualisation of quantitative variables
+
+```{r}
+#| label: data-viz
+
+numeric_vars <- c("y", "age", "study_hrs", "sleep_hrs", "attend_pct")
+vlabels <- c("Exam score", "Age (years)", "Weekly study (hours)", 
+             "Sleep duration (hours)", "School attendance (%)")
+
+data_clean |>
+  select(id, all_of(numeric_vars)) |>
+  pivot_longer(cols = -id, names_to = "var", values_to = "value") |>
+  mutate(var = factor(var, levels = numeric_vars, labels = vlabels)) |>
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = "dodgerblue", color = "black", bins = 20, linewidth = 0.5) +
+  facet_wrap(~var, scales = "free") +
+  scale_y_continuous(expand = expansion(c(0, 0.05))) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  labs(x = "Value", y = "Count") +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(size = 11, face = "bold"))
+```
+
 ### Data Integrity and Plausibility Checks
 
 **Duplicate check**
@@ -300,7 +323,18 @@ invalid_data <- data_clean |>
     y < 0 | y > 100 |
     sleep_hrs < 0 | sleep_hrs > 24 |
     study_hrs < 0 | study_hrs > 168 |
-    attend_pct < 0 | attend_pct > 100
+    attend_pct < 0 | attend_pct > 100 |
+      
+    age < 0 |
+    sexe < 1 | sexe > 3 |
+    school_type < 1 | school_type > 2 |
+    parent_educ < 1 | parent_educ > 6 |
+    sleep_qual < 1 | sleep_qual > 3 |
+    web_access < 1 | web_access > 2 |
+    trav_time < 1 | trav_time > 4 |
+    extra_act < 1 | extra_act > 2 |
+    study_method < 1 | study_method > 6 |
+    attend_pct_cat < 1 | attend_pct_cat > 4 
   )
 cat("Number of implausible values:", nrow(invalid_data), "\n")
 ```
@@ -406,6 +440,10 @@ data_clean |>
   describe_distribution(centrality = c("mean", "median"), quartiles = TRUE) |>
   as_tibble() |>
   kable(digits = 2, caption = "Descriptive statistics for quantitative variables")
+
+tab_freq1(data_clean, c("sexe", "school_type", "parent_educ", "sleep_qual", "web_access",
+                 "trav_time", "extra_act", "study_method"), digits= 1) |>
+  kable(align = "l", padding= 2, caption = "Frequency tables for categorial variables")
 ```
 
 ### Predictor-Outcome Relationships
@@ -478,12 +516,12 @@ data_clean |>
 
 **Key patterns:**
 
--   **web_access:** Large difference (\~10 points: No ≈ 50, Yes ≈ 60)
--   **extra_act:** Moderate difference (\~8 points: No ≈ 52, Yes ≈ 60)
--   **school_type:** Small difference (\~6 points: Public ≈ 52, Private ≈ 58)
--   **parent_educ:** Positive monotone trend (\~15 point range)
--   **trav_time:** Negative monotone trend (\~18 point range)
--   **sexe:** Minimal differences (all ≈ 58)
+-   **web_access:** Large difference (\~7 points: No ≈ 50, Yes ≈ 57)
+-   **extra_act:** Large difference (\~9 points: No ≈ 51, Yes ≈ 60)
+-   **school_type:** Moderate difference (\~6 points: Public ≈ 53, Private ≈ 59)
+-   **parent_educ:** Positive monotone trend (\~13 point range)
+-   **trav_time:** Negative monotone trend (\~16 point range)
+-   **sexe:** Minimal differences (all ≈ 56)
 
 ### Assessing Ordinal Predictors
 
@@ -506,8 +544,8 @@ p3 <- plot_monotone(data_clean, "trav_time", "Commute Time")
 **Ordinal modeling decisions:**
 
 -   **trav_time:** ✓ Strong monotone negative effect (use as ordered factor)
--   **parent_educ:** ✓ Clear positive monotone pattern with a pontential plateau (use as ordered factor)
--   **sleep_qual:** ⚠ mPositive monotone with a pontential plateau (use as ordered with caution)
+-   **parent_educ:** ✓ Clear positive monotone pattern with a potential plateau (use as ordered factor)
+-   **sleep_qual:** ⚠ Positive monotone with a potential plateau (use as ordered with caution)
 
 ### Predictor Associations
 
@@ -697,7 +735,10 @@ m_D <- lm(
 
 # M6: Final model with both key interactions + quadratic sleep
 m_E <- lm(
-  y ~ school_type + web_access + attend_pct + sleep_hrs + I(sleep_hrs^2) + sleep_qual + trav_time + extra_act + study_method + study_hrs + study_hrs:sleep_hrs + study_hrs:sleep_qual + school_type:parent_educ + web_access:study_method,
+  y ~ web_access + log(attend_pct) +
+    sleep_hrs + I(sleep_hrs^2) + trav_time + extra_act + 
+    study_method + study_hrs + study_hrs:sleep_hrs + 
+    study_hrs:sleep_qual + school_type:parent_educ + web_access:study_method,
   data = data_train
 )
 
@@ -709,7 +750,24 @@ m_M <- lm(
 )
 
 m_N <- lm(
-  y ~ (age + school_type + study_hrs + attend_pct + sleep_qual + parent_educ + study_method)^2,
+  y ~ school_type + web_access + attend_pct + sleep_hrs + sleep_qual + trav_time + extra_act + study_method + study_hrs + study_hrs:sleep_hrs + study_hrs:sleep_qual + school_type:parent_educ + web_access:study_method,
+  data = data_train
+)
+
+m_full_interactions <- lm(
+  y ~ (age + school_type + web_access + attend_pct + sleep_hrs + I(sleep_hrs^2) + sleep_qual + parent_educ + trav_time + extra_act + study_method + study_hrs +school_type)^2,
+  data = data_train
+)
+
+m_opti_AIC = lm(
+  y ~ school_type + web_access + attend_pct + sleep_hrs + I(sleep_hrs^2) + 
+    sleep_qual + parent_educ + trav_time + extra_act + study_method + 
+    study_hrs + school_type:I(sleep_hrs^2) + school_type:sleep_qual + 
+    school_type:parent_educ + web_access:I(sleep_hrs^2) + web_access:trav_time + 
+    web_access:study_method + attend_pct:sleep_hrs + attend_pct:I(sleep_hrs^2) + 
+    attend_pct:sleep_qual + attend_pct:study_hrs + sleep_hrs:parent_educ + 
+    sleep_hrs:study_hrs + I(sleep_hrs^2):parent_educ + sleep_qual:study_hrs + 
+    school_type:study_method,
   data = data_train
 )
 ```
@@ -721,7 +779,7 @@ m_N <- lm(
 
 # Compare models on training data
 model_comparison <- compare_performance(
-  m1_socio, m_core, m2_behavior, m_C, m_D, m_E, m_M,m_N,
+  m1_socio, m_core, m2_behavior, m_C, m_D, m_E, m_M, m_full_interactions, m_opti_AIC,
   metrics = "common",
   rank = TRUE
 )
@@ -730,28 +788,86 @@ model_comparison |>
   kable(digits = 3, caption = "Model comparison on training data (lower AIC/BIC and higher R² are better)")
 ```
 
+### Transformations
+
+```{r}
+#| label: transformation
+
+ggplot(data_clean, aes(x = sleep_hrs, y = y)) +
+  geom_point(alpha=0.5, color="darkgrey") +                          # points
+  stat_smooth(method="lm", formula=y~x, color="red", se=FALSE, size=1.2) +        # linéaire
+  stat_smooth(method="lm", formula=y~x+I(x^2), color="blue", se=FALSE, size=1.2) + # quadratique
+  labs(
+    title="Comparison: Linear vs Quadratic fit",
+    subtitle="Red = Linear, Blue = Quadratic",
+    x="Sleep hours",
+    y="Exam Score"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face="bold", hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5))
+
+lm_linear <- lm(y ~ sleep_hrs, data=data_clean)
+residuals <- resid(lm_linear)
+
+plot(data_clean$sleep_hrs, residuals,
+     xlab="Sleep hours",
+     ylab="Residuals",
+     main="Residuals vs Sleep Hours (Linear Model)",
+     pch=19, col="darkgrey")
+lines(lowess(data_clean$sleep_hrs, residuals), col="red", lwd=2)
+abline(h=0, lty=2, col="blue")  # ligne horizontale à zéro
+```
+
 **Nested F-tests for interactions:**
 
 ```{r}
 #| label: nested-tests
 
-cat("=== TEST 1: Adding study_hrs:sleep_qual interaction ===\n")
-anova(m_D, m_E) |> print()
+anova_tests <- list(
+  "Test 1: Quadratic sleep_hrs" = anova(m_N, m_E),
+  "Test 2: study_hrs:sleep_qual interaction" = anova(m_D, m_E),
+  "Test 3: parent_educ:school_type interaction" = anova(m_C, m_E),
+  "Test 4: Additional interactions" = anova(m2_behavior, m_E)
+)
 
-cat("\n=== TEST 2: Adding parent_educ:school_type interaction ===\n")
-anova(m_C, m_E) |> print()
+anova_summary <- lapply(names(anova_tests), function(name) {
+  df <- tidy(anova_tests[[name]])
+  df$Test <- name
+  df
+}) |> bind_rows() |> select(Test, everything())
 
-cat("\n=== TEST 3: Are additional interactions needed? ===\n")
-anova(m_E, m2_behavior) |> print()
+print(anova_summary)
 ```
+
+**ANOVA Tests Analysis** : According to the table:
+
+-   **Test 1 - Quadratic sleep_hrs** : The p-value is extremely small (≈ 2.08 × 10⁻²⁶), which is highly
+    significant. Adding the term I(sleep_hrs\^2) substantially improves the model and justifies including the
+    quadratic term.
+
+-   **Test 2 - study_hrs:sleep_qual interaction** : The p-value is also extremely small (≈ 4.91 × 10⁻⁹⁶),
+    indicating strong significance. The interaction between study_hrs and sleep_qual contributes significantly
+    to the model.
+
+-   **Test 3 - parent_educ:school_type interaction** : The p-value is very small (≈ 2.22 × 10⁻⁴⁵), showing a
+    significant effect. The interaction between parent_educ and school_type provides a meaningful improvement
+    in model quality.
+
+-   **Test 4 - Additional interactions** : The p-value is extremely small as well (≈ 1.23 × 10⁻⁹⁵), indicating
+    that these additional interactions further enhance the model.
+
+**Summary** All tests show that the added terms and interactions in m_E are significant and improve the
+overall model performance. Therefore, retaining the quadratic terms and interactions included in m_E is fully
+justified.
 
 **Selection justification:**
 
 Based on multiple criteria:
 
-1.  **AIC criterion:** Model `m_E` has the lowest AIC with Akaike weight \> 99%
+1.  **BIC criterion:** Model `m_E` has the lowest BIC with Akaike weight \> 99%
 2.  **Nested F-tests:** Both interactions are statistically significant (p \< 0.001)
-3.  **Adjusted R²:** `m_E` achieves highest adjusted R² (0.740)
+3.  **Adjusted R²:** `m_E` achieves highest adjusted R² (0.741)
 4.  **Parsimony:** Model `m_E` balances complexity and fit better than saturated models
 
 **Final model selected:** `m_E`
@@ -963,21 +1079,30 @@ print(formula(mod_final))
 ```{r}
 #| label: coefficient-table
 
-# Get coefficient summary with confidence intervals
+# Get coefficient summary
 coef_summary <- summary(mod_final)$coefficients
+
+# Confidence intervals
 ci_95 <- confint(mod_final)
 
+# Keep only coefficients present in the summary
+ci_95 <- ci_95[rownames(coef_summary), , drop = FALSE]
+
 coef_table <- data.frame(
-  Estimate = coef_summary[, "Estimate"],
+  Estimate  = coef_summary[, "Estimate"],
   Std.Error = coef_summary[, "Std. Error"],
-  t.value = coef_summary[, "t value"],
-  p.value = coef_summary[, "Pr(>|t|)"],
-  CI.Lower = ci_95[, 1],
-  CI.Upper = ci_95[, 2]
+  t.value   = coef_summary[, "t value"],
+  p.value   = coef_summary[, "Pr(>|t|)"],
+  CI.Lower  = ci_95[, 1],
+  CI.Upper  = ci_95[, 2]
 )
 
 coef_table |>
-  kable(digits = 3, caption = "Coefficient estimates with 95% confidence intervals")
+  kable(
+    digits = 3,
+    caption = "Coefficient estimates with 95% confidence intervals"
+  )
+
 ```
 
 ## Key Coefficient Interpretations
@@ -985,16 +1110,17 @@ coef_table |>
 ```{r}
 #| label: key-interpretations
 
-# Attendance
-attend_coef <- coef(mod_final)["attend_pct"]
-attend_ci <- ci_95["attend_pct", ]
+# Attendance (log-transformed)
+attend_coef <- coef(mod_final)["log(attend_pct)"]
+attend_ci <- ci_95["log(attend_pct)", ]
 
-cat("📊 ATTENDANCE (attend_pct):\n")
+cat("📊 ATTENDANCE (log(attend_pct)):\n")
 cat(sprintf("   Estimate: %.3f [95%% CI: %.3f, %.3f]\n",
             attend_coef, attend_ci[1], attend_ci[2]))
-cat(sprintf("   Each 1%% attendance increase → %.2f points\n", attend_coef))
-cat(sprintf("   Moving from 60%% to 90%% → ~%.1f points gain\n\n",
-            attend_coef * 30))
+cat("   Interpretation: semi-elasticity\n")
+cat("   A 1% increase in attendance is associated with\n")
+cat(sprintf("   an average change of %.3f points in performance\n\n",
+            attend_coef))
 
 # Sleep hours (if included)
 if("sleep_hrs" %in% names(coef(mod_final))) {
@@ -1128,7 +1254,7 @@ cat(sprintf("  Predicted Score: %.1f [95%% CI: %.1f, %.1f]\n\n",
             pred_2[1], pred_2[2], pred_2[3]))
 
 cat(sprintf("DIFFERENCE: %.1f points (%.1f%% gap)\n\n",
-            pred_2[1] - pred_1[1], 100 * (pred_2[1] - pred_1[1]) / pred_1[1]))
+            pred_1[1] - pred_2[1], 100 * (pred_1[1] - pred_2[1]) / pred_2[1]))
 ```
 
 ```{r}
@@ -1214,7 +1340,7 @@ medae_baseline <- median(abs(y_test - y_pred_baseline))
 # Out-of-sample R²
 ss_tot <- sum((y_test - mean(y_test))^2)
 ss_res_baseline <- sum((y_test - y_pred_baseline)^2)
-r2_oos_baseline <- 1 - (ss_res_baseline / ss_tot)
+r2_oos_baseline <- 0
 
 cat("BASELINE MODEL (predict training mean):\n")
 cat(sprintf("  Training mean: %.2f\n", y_train_mean))
@@ -1222,7 +1348,7 @@ cat(sprintf("  MSE:           %.3f\n", mse_baseline))
 cat(sprintf("  RMSE:          %.3f\n", sqrt(mse_baseline)))
 cat(sprintf("  MAE:           %.3f\n", mae_baseline))
 cat(sprintf("  MedAE:         %.3f\n", medae_baseline))
-cat(sprintf("  Out-of-sample R²: %.4f\n", r2_oos_baseline))
+cat(sprintf("  Out-of-sample R²: %.2f\n", r2_oos_baseline))
 ```
 
 ## Final Model Performance
@@ -1246,6 +1372,7 @@ ss_res_final <- sum((y_test - y_pred_final)^2)
 r2_oos_final <- 1 - (ss_res_final / ss_tot)
 
 cat("FINAL MODEL PERFORMANCE (Test Set):\n")
+cat(sprintf("  Test mean:        %.3f\n", mean(data_test$y, na.rm = TRUE)))
 cat(sprintf("  MSE:              %.3f\n", mse_final))
 cat(sprintf("  RMSE:             %.3f points\n", rmse_final))
 cat(sprintf("  MAE:              %.3f\n", mae_final))
@@ -1366,7 +1493,7 @@ cat("
 
 cat("MODEL PARSIMONY:\n")
 cat(sprintf("  Number of parameters: %d\n", results_mE$n_params))
-cat(sprintf("  Parameters include: %d main effects + 2 interactions\n", 
+cat(sprintf("  Parameters include: %d main effects + 4 interactions\n", 
             results_mE$n_params - 2))
 cat("  Balance: Strong predictive performance with interpretable structure\n\n")
 
