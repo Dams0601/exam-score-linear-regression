@@ -62,8 +62,40 @@ set.seed(42)
 options(pillar.width = 130, width = 200, scipen = 999, digits = 5)
 
 # Add Packages here. Be careful of the ordering
-library(janitor)
-library(tidyverse) # always load it in last position
+library("broom")
+library("car")
+library("caret")
+library("collapse")
+library("correlation")
+library("datawizard")
+library("effectsize")
+library("GGally")
+library("ggfortify")
+library("ggpubr")
+library("ggrepel")
+library("glue")
+library("gtsummary")
+library("here")
+library("insight")
+library("janitor")
+library("kableExtra")
+library("lmtest")
+library("marginaleffects")
+library("matrixTests")
+library("modelbased")
+library("multcomp")
+library("openxlsx")
+library("parameters")
+library("patchwork")
+library("performance")
+library("pROC")
+library("qqplotr")
+library("rstatix")
+library("scales")
+library("see")
+library("tidyverse")
+
+#source("../projet_rendu/helper_functions.R")
 ```
 
 # Introduction
@@ -84,28 +116,28 @@ total de 15 variables couvrant différentes dimensions de leur parcours et de le
 
 Variables liées aux habitudes de vie et au bien-être :
 
--   `sleep_hrs` : nombre d'heures de sommeil par nuit
--   `sleep_qual` : qualité subjective du sommeil (échelle ordinale ou continue)
--   `trav_time` : temps de trajet quotidien pour se rendre à l'école
+-   `sleep_hrs` (continue) : nombre d'heures de sommeil par nuit
+-   `sleep_qual` (catégorie) : qualité subjective du sommeil
+-   `trav_time` (catégorie) : temps de trajet quotidien pour se rendre à l'école
 
 Variables liées aux habitudes d'étude :
 
--   `study_hrs` : nombre d'heures d'étude hebdomadaires
--   `study_method` : méthode d'étude privilégiée (variable catégorielle)
--   `attend_pct` / `attend_pct_cat` : pourcentage de présence en cours
+-   `study_hrs` (continue) : nombre d'heures d'étude hebdomadaires
+-   `study_method` (catégorie) : méthode d'étude privilégiée
+-   `attend_pct` (continue) / `attend_pct_cat` (catégorie) : pourcentage de présence en cours
 
 Variables contextuelles et environnementales :
 
--   `id` : Identifiant de l'étudiant
--   `sexe` : Genre de l'étudiant (Female, Male, Other)
--   `age` / `agecat` : Âge de l'étudiant en années (en catégorie)
--   `school_type` : type d'établissement fréquenté (public/privé, par exemple)
--   `web_access` : accès à Internet à domicile (oui/non)
--   `parent_educ` : niveau d'éducation des parents (variable ordinale)
--   `extra_act` : participation à des activités extrascolaires (nombre ou indicateur binaire)
+-   `id` (catégorie) : Identifiant de l'étudiant
+-   `sexe` (catégorie) : Genre de l'étudiant (Female, Male, Other)
+-   `age` (continue) / `agecat` (catégorie) : Âge de l'étudiant en années
+-   `school_type` (catégorie) : Type d'établissement fréquenté (public/privé, par exemple)
+-   `web_access` (catégorie) : Accès à Internet à domicile (oui/non)
+-   `parent_educ` (catégorie) : Niveau d'éducation des parents
+-   `extra_act` (catégorie) : Participation à des activités extrascolaires (oui/non)
 
-La variable dépendante y représente une mesure quantitative de la performance académique, qui pourrait
-correspondre à une moyenne générale, un score standardisé ou un résultat à un examen spécifique.
+La variable dépendante `y` représente une mesure quantitative de la performance académique, qui pourrait
+correspondre à un résultat à un examen spécifique.
 
 ## Hypothèses de recherche
 
@@ -143,11 +175,55 @@ formuler certaines hypothèses :
 
 ## Gestion des données
 
-On charge la base de données
+On importe la base de données.
 
 ```{r}
-raw_data <- read_csv("../data/project.csv")
-raw_data
+data <- read_csv("../data/project.csv")
+head(data, n = 10)
+cat("Taille de l'échantillon :", nrow(data), "observations\n")
+cat("Nombre de variables:", ncol(data), "\n\n")
+```
+
+On convertit les variables de type catégorie.
+
+```{r}
+data_clean <- data |>
+  mutate(
+    sexe = factor(sexe, levels = c(1, 2, 3), labels = c("Female", "Male", "Other")),
+    school_type = factor(school_type, levels = c(1, 2), labels = c("Public", "Private")),
+    parent_educ = factor(parent_educ, levels = 1:6, 
+                         labels = c("No formal", "High school", "Graduate", "Postgraduate 1", "Postgraduate 2", "PhD"), 
+                         ordered = TRUE),
+    sleep_qual = factor(sleep_qual, levels = c(1, 2, 3), labels = c("Poor", "Average", "Good"), ordered = TRUE),
+    web_access = factor(web_access, levels = c(1, 2), labels = c("No", "Yes")),
+    trav_time = factor(trav_time, levels = 1:4, 
+                       labels = c("<15 min", "15–30 min", "30–60 min", ">60 min"), ordered = TRUE),
+    extra_act = factor(extra_act, levels = c(1, 2), labels = c("No", "Yes")),
+    study_method = factor(study_method, levels = 1:6, 
+                          labels = c("Online videos", "Coaching", "Notes", "Textbook", "Group study", "Mixed"))
+  ) |>
+  # 2. Fix references (relevel)
+  mutate(
+    sexe = relevel(sexe, ref = "Female"),
+    school_type = relevel(school_type, ref = "Public"),
+    web_access = relevel(web_access, ref = "No"),
+    extra_act = relevel(extra_act, ref = "No"),
+    study_method = relevel(study_method, ref = "Online videos")
+  ) |>
+  # 3. Relabel
+  relabel(
+    sexe = "Gender",
+    school_type = "School type",
+    parent_educ = "Parental education",
+    sleep_qual = "Sleep quality",
+    web_access = "Internet access",
+    trav_time = "Commute time",
+    extra_act = "Extra curricular activities",
+    study_method = "Study method",
+    y = "Exam score",
+    age = "Age (years)",
+    attend_pct = "School attendance (%)"
+  )
 ```
 
 ## Section 2.2
@@ -155,17 +231,17 @@ raw_data
 Some variable distributions. Blah blah blah
 
 ```{r}
-raw_data |> 
+data |> 
   count(agecat)
 ```
 
 ```{r}
-raw_data |> 
+data |> 
   tabyl(sleep_qual)
 ```
 
 ```{r}
-raw_data |> 
+data |> 
   ggplot(aes(x = study_hrs)) +
   geom_histogram(fill = "grey", color = "black", bins = 10)
 ```

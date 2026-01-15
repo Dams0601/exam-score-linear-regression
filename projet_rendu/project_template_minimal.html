@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="BEN SAID Daniel ; DESCHILDRE Mateo ; ROY Damien">
-<meta name="dcterms.date" content="2026-01-13">
+<meta name="dcterms.date" content="2026-01-15">
 
 <title>Linear Models Project in R</title>
 <style>
@@ -3116,7 +3116,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 13, 2026</p>
+      <p class="date">January 15, 2026</p>
     </div>
   </div>
   
@@ -3155,27 +3155,27 @@ vertical-align: -.125em;
 <p>Le jeu de données utilisé dans cette étude comprend 5000 observations collectées auprès d’étudiants, avec un total de 15 variables couvrant différentes dimensions de leur parcours et de leur quotidien :</p>
 <p>Variables liées aux habitudes de vie et au bien-être :</p>
 <ul>
-<li><code>sleep_hrs</code> : nombre d’heures de sommeil par nuit</li>
-<li><code>sleep_qual</code> : qualité subjective du sommeil (échelle ordinale ou continue)</li>
-<li><code>trav_time</code> : temps de trajet quotidien pour se rendre à l’école</li>
+<li><code>sleep_hrs</code> (continue) : nombre d’heures de sommeil par nuit</li>
+<li><code>sleep_qual</code> (catégorie) : qualité subjective du sommeil</li>
+<li><code>trav_time</code> (catégorie) : temps de trajet quotidien pour se rendre à l’école</li>
 </ul>
 <p>Variables liées aux habitudes d’étude :</p>
 <ul>
-<li><code>study_hrs</code> : nombre d’heures d’étude hebdomadaires</li>
-<li><code>study_method</code> : méthode d’étude privilégiée (variable catégorielle)</li>
-<li><code>attend_pct</code> / <code>attend_pct_cat</code> : pourcentage de présence en cours</li>
+<li><code>study_hrs</code> (continue) : nombre d’heures d’étude hebdomadaires</li>
+<li><code>study_method</code> (catégorie) : méthode d’étude privilégiée</li>
+<li><code>attend_pct</code> (continue) / <code>attend_pct_cat</code> (catégorie) : pourcentage de présence en cours</li>
 </ul>
 <p>Variables contextuelles et environnementales :</p>
 <ul>
-<li><code>id</code> : Identifiant de l’étudiant</li>
-<li><code>sexe</code> : Genre de l’étudiant (Female, Male, Other)</li>
-<li><code>age</code> / <code>agecat</code> : Âge de l’étudiant en années (en catégorie)</li>
-<li><code>school_type</code> : type d’établissement fréquenté (public/privé, par exemple)</li>
-<li><code>web_access</code> : accès à Internet à domicile (oui/non)</li>
-<li><code>parent_educ</code> : niveau d’éducation des parents (variable ordinale)</li>
-<li><code>extra_act</code> : participation à des activités extrascolaires (nombre ou indicateur binaire)</li>
+<li><code>id</code> (catégorie) : Identifiant de l’étudiant</li>
+<li><code>sexe</code> (catégorie) : Genre de l’étudiant (Female, Male, Other)</li>
+<li><code>age</code> (continue) / <code>agecat</code> (catégorie) : Âge de l’étudiant en années</li>
+<li><code>school_type</code> (catégorie) : Type d’établissement fréquenté (public/privé, par exemple)</li>
+<li><code>web_access</code> (catégorie) : Accès à Internet à domicile (oui/non)</li>
+<li><code>parent_educ</code> (catégorie) : Niveau d’éducation des parents</li>
+<li><code>extra_act</code> (catégorie) : Participation à des activités extrascolaires (oui/non)</li>
 </ul>
-<p>La variable dépendante y représente une mesure quantitative de la performance académique, qui pourrait correspondre à une moyenne générale, un score standardisé ou un résultat à un examen spécifique.</p>
+<p>La variable dépendante <code>y</code> représente une mesure quantitative de la performance académique, qui pourrait correspondre à un résultat à un examen spécifique.</p>
 </section>
 <section id="hypothèses-de-recherche" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="hypothèses-de-recherche"><span class="header-section-number">1.3</span> Hypothèses de recherche</h2>
@@ -3219,12 +3219,12 @@ vertical-align: -.125em;
 <h1 data-number="2"><span class="header-section-number">2</span> Methodes</h1>
 <section id="gestion-des-données" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="gestion-des-données"><span class="header-section-number">2.1</span> Gestion des données</h2>
-<p>On charge la base de données</p>
+<p>On importe la base de données.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>raw_data <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/project.csv&quot;</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>raw_data</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/project.csv&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(data, <span class="at">n =</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5,000 × 16
+<pre><code># A tibble: 10 × 16
       id     y   age agecat  sexe school_type parent_educ study_hrs sleep_hrs sleep_qual attend_pct attend_pct_cat web_access
    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;          &lt;dbl&gt;      &lt;dbl&gt;
  1     1  57.3  18.2      5     1           2           1      11.9       5            1       84.4              4          2
@@ -3237,17 +3237,70 @@ vertical-align: -.125em;
  8     8  72.3  18.4      5     3           1           6      10.7       6.9          2       87.9              4          1
  9     9  36.3  14.7      1     1           1           2       4.8       7.3          2       64.4              2          1
 10    10  77.6  18.5      5     3           2           3      10.1       8.6          3       80.6              3          2
-# ℹ 4,990 more rows
 # ℹ 3 more variables: trav_time &lt;dbl&gt;, extra_act &lt;dbl&gt;, study_method &lt;dbl&gt;</code></pre>
 </div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Taille de l&#39;échantillon :&quot;</span>, <span class="fu">nrow</span>(data), <span class="st">&quot;observations</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Taille de l&#39;échantillon : 5000 observations</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Nombre de variables:&quot;</span>, <span class="fu">ncol</span>(data), <span class="st">&quot;</span><span class="sc">\n\n</span><span class="st">&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Nombre de variables: 16 </code></pre>
+</div>
+</div>
+<p>On convertit les variables de type catégorie.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>data_clean <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">sexe =</span> <span class="fu">factor</span>(sexe, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;Female&quot;</span>, <span class="st">&quot;Male&quot;</span>, <span class="st">&quot;Other&quot;</span>)),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">school_type =</span> <span class="fu">factor</span>(school_type, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;Public&quot;</span>, <span class="st">&quot;Private&quot;</span>)),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">parent_educ =</span> <span class="fu">factor</span>(parent_educ,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;No formal&quot;</span>, <span class="st">&quot;High school&quot;</span>, <span class="st">&quot;Graduate&quot;</span>, <span class="st">&quot;Postgraduate 1&quot;</span>, <span class="st">&quot;Postgraduate 2&quot;</span>, <span class="st">&quot;PhD&quot;</span>),</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">ordered =</span> <span class="cn">TRUE</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">sleep_qual =</span> <span class="fu">factor</span>(sleep_qual, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;Poor&quot;</span>, <span class="st">&quot;Average&quot;</span>, <span class="st">&quot;Good&quot;</span>), <span class="at">ordered =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">web_access =</span> <span class="fu">factor</span>(web_access, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;No&quot;</span>, <span class="st">&quot;Yes&quot;</span>)),</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">trav_time =</span> <span class="fu">factor</span>(trav_time,</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;&lt;15 min&quot;</span>, <span class="st">&quot;15–30 min&quot;</span>, <span class="st">&quot;30–60 min&quot;</span>, <span class="st">&quot;&gt;60 min&quot;</span>), <span class="at">ordered =</span> <span class="cn">TRUE</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">extra_act =</span> <span class="fu">factor</span>(extra_act, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;No&quot;</span>, <span class="st">&quot;Yes&quot;</span>)),</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">study_method =</span> <span class="fu">factor</span>(study_method,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;Online videos&quot;</span>, <span class="st">&quot;Coaching&quot;</span>, <span class="st">&quot;Notes&quot;</span>, <span class="st">&quot;Textbook&quot;</span>, <span class="st">&quot;Group study&quot;</span>, <span class="st">&quot;Mixed&quot;</span>)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2. Fix references (relevel)</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">sexe =</span> <span class="fu">relevel</span>(sexe, <span class="at">ref =</span> <span class="st">&quot;Female&quot;</span>),</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">school_type =</span> <span class="fu">relevel</span>(school_type, <span class="at">ref =</span> <span class="st">&quot;Public&quot;</span>),</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">web_access =</span> <span class="fu">relevel</span>(web_access, <span class="at">ref =</span> <span class="st">&quot;No&quot;</span>),</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">extra_act =</span> <span class="fu">relevel</span>(extra_act, <span class="at">ref =</span> <span class="st">&quot;No&quot;</span>),</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">study_method =</span> <span class="fu">relevel</span>(study_method, <span class="at">ref =</span> <span class="st">&quot;Online videos&quot;</span>)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 3. Relabel</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relabel</span>(</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">sexe =</span> <span class="st">&quot;Gender&quot;</span>,</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">school_type =</span> <span class="st">&quot;School type&quot;</span>,</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">parent_educ =</span> <span class="st">&quot;Parental education&quot;</span>,</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">sleep_qual =</span> <span class="st">&quot;Sleep quality&quot;</span>,</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">web_access =</span> <span class="st">&quot;Internet access&quot;</span>,</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">trav_time =</span> <span class="st">&quot;Commute time&quot;</span>,</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">extra_act =</span> <span class="st">&quot;Extra curricular activities&quot;</span>,</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">study_method =</span> <span class="st">&quot;Study method&quot;</span>,</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&quot;Exam score&quot;</span>,</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">age =</span> <span class="st">&quot;Age (years)&quot;</span>,</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">attend_pct =</span> <span class="st">&quot;School attendance (%)&quot;</span></span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="section-2.2" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="section-2.2"><span class="header-section-number">2.2</span> Section 2.2</h2>
 <p>Some variable distributions. Blah blah blah</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>raw_data <span class="sc">|&gt;</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(agecat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>data <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(agecat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 5 × 2
   agecat     n
@@ -3260,8 +3313,8 @@ vertical-align: -.125em;
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>raw_data <span class="sc">|&gt;</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tabyl</span>(sleep_qual)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>data <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tabyl</span>(sleep_qual)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code> sleep_qual    n percent
           1 1811  0.3622
@@ -3270,9 +3323,9 @@ vertical-align: -.125em;
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>raw_data <span class="sc">|&gt;</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> study_hrs)) <span class="sc">+</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">fill =</span> <span class="st">&quot;grey&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>, <span class="at">bins =</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>data <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> study_hrs)) <span class="sc">+</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">fill =</span> <span class="st">&quot;grey&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>, <span class="at">bins =</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
