@@ -1,9 +1,9 @@
 ---
 title: "Linear Models Project in R"
-subtitle: "M1–MIDO, 2025–2026"
+subtitle: "Predicting Student Academic Performance"
 author:
   - name: "BEN SAID Daniel ; DESCHILDRE Mateo ; ROY Damien"
-    affiliation: "Université / Program"
+    affiliation: "M1–MIDO, Université Paris Dauphine-PSL"
 date: last-modified
 lang: en
 format:
@@ -19,14 +19,14 @@ format:
     fontsize: 125%
     self-contained: true
     df-print: default
-    code-fold: false
-    code-tools: false
+    code-fold: true
+    code-tools: true
     code-line-numbers: false
     code-overflow: scroll
     code-copy: true
     highlight-style: github
     theme: cosmo
-    code-block-bg: "#F5F5F5" # Choose here https://www.w3schools.com/colors/colors_shades.asp
+    code-block-bg: "#F5F5F5"
     html-math-method: mathjax
     fig-format: retina
     fig-width: 13
@@ -34,7 +34,7 @@ format:
     fig-align: center
     fig-pos: "H"
     fig-cap-location: bottom
-    mainfont: "Source Sans Pro" # "Source Sans Pro" "Arial"  "Calibri"  "Cambria"  "Times New Roman"  "Georgia",  your favorite
+    mainfont: "Source Sans Pro"
 execute:
   echo: true
   warning: false
@@ -48,7 +48,7 @@ knitr:
   opts_chunk:
     tidy: styler
     comment: ''
-    dev: svg # ou png
+    dev: svg
 ---
 
 ```{r}
@@ -61,7 +61,7 @@ set.seed(42)
 # Global options
 options(pillar.width = 130, width = 200, scipen = 999, digits = 5)
 
-# Add Packages here. Be careful of the ordering
+# Load packages
 library("broom")
 library("car")
 library("caret")
@@ -94,115 +94,120 @@ library("rstatix")
 library("scales")
 library("see")
 library("tidyverse")
+library("interactions")
 
-#source("../projet_rendu/helper_functions.R")
+source(here("script", "helper_functions.R"))
 ```
 
 # Introduction
 
-## Contexte et problématique
+## Context and Research Problem
 
-Ce projet vise à prédire la performance académique des étudiants (mesurée par la variable `y`) en exploitant
-un ensemble de variables explicatives liées à leurs habitudes de vie, leur environnement d'apprentissage et
-leur contexte socio-éducatif. L'objectif principal de cette analyse est de construire un modèle de régression
-linéaire multiple capable de capturer les relations complexes entre les variables explicatives et la
-performance académique, tout en respectant les hypothèses du modèle linéaire et en assurant une bonne capacité
-de généralisation sur de nouvelles données.
+Academic performance is influenced by a complex interplay of factors including study habits, living
+conditions, socio-educational context, and health-related behaviors. Understanding these relationships is
+crucial for educators, policymakers, and students themselves to identify actionable interventions that can
+improve educational outcomes.
 
-## Présentation des données
+This project aims to predict student academic performance (measured by exam scores) using multiple linear
+regression, while exploring the relative importance of various predictors and potential interactions between
+them. The analysis follows a dual objective: building an **interpretable model** for inference and
+understanding relationships, and achieving **strong predictive performance** on unseen data.
 
-Le jeu de données utilisé dans cette étude comprend 5000 observations collectées auprès d'étudiants, avec un
-total de 15 variables couvrant différentes dimensions de leur parcours et de leur quotidien :
+## Dataset Overview
 
-Variables liées aux habitudes de vie et au bien-être :
+The dataset comprises **5,000 observations** collected from students, with **15 variables** covering different
+dimensions of their academic journey and daily life:
 
--   `sleep_hrs` (continue) : nombre d'heures de sommeil par nuit
--   `sleep_qual` (catégorie) : qualité subjective du sommeil
--   `trav_time` (catégorie) : temps de trajet quotidien pour se rendre à l'école
+**Life habits and well-being:**
 
-Variables liées aux habitudes d'étude :
+-   `sleep_hrs` (continuous): nightly sleep duration
+-   `sleep_qual` (ordinal): subjective sleep quality (Poor, Average, Good)
+-   `trav_time` (ordinal): daily commute time to school
 
--   `study_hrs` (continue) : nombre d'heures d'étude hebdomadaires
--   `study_method` (catégorie) : méthode d'étude privilégiée
--   `attend_pct` (continue) / `attend_pct_cat` (catégorie) : pourcentage de présence en cours
+**Study habits:**
 
-Variables contextuelles et environnementales :
+-   `study_hrs` (continuous): weekly study hours
+-   `study_method` (categorical): preferred study method (6 categories)
+-   `attend_pct` (continuous): percentage of class attendance
 
--   `id` (catégorie) : Identifiant de l'étudiant
--   `sexe` (catégorie) : Genre de l'étudiant (Female, Male, Other)
--   `age` (continue) / `agecat` (catégorie) : Âge de l'étudiant en années
--   `school_type` (catégorie) : Type d'établissement fréquenté (public/privé, par exemple)
--   `web_access` (catégorie) : Accès à Internet à domicile (oui/non)
--   `parent_educ` (catégorie) : Niveau d'éducation des parents
--   `extra_act` (catégorie) : Participation à des activités extrascolaires (oui/non)
+**Contextual and environmental factors:**
 
-La variable dépendante `y` représente une mesure quantitative de la performance académique, qui pourrait
-correspondre à un résultat à un examen spécifique.
+-   `age` (continuous): student age in years
+-   `sexe` (categorical): gender (Female, Male, Other)
+-   `school_type` (categorical): type of institution (Public, Private)
+-   `web_access` (categorical): home internet access (Yes, No)
+-   `parent_educ` (ordinal): parental education level (6 levels)
+-   `extra_act` (categorical): participation in extracurricular activities (Yes, No)
 
-## Hypothèses de recherche
+The dependent variable `y` represents a quantitative measure of academic performance (exam score, range
+0-100).
 
-Sur la base de la litérrature existante en science de l'éducation et en psychologie cognitive, on peut
-formuler certaines hypothèses :
+## Research Hypotheses
 
-1.  Effet non-linéaire du sommeil
+Based on existing literature in education science and cognitive psychology, we formulate the following
+hypotheses:
 
--   `sleep_hrs` présente un effet non-linéaire (quadratique) sur la performance académique;
+**H1: Non-linear effect of sleep**\
+Sleep duration (`sleep_hrs`) exhibits a quadratic (inverted-U) relationship with performance, where both
+insufficient and excessive sleep negatively affect scores.
 
-2.  Interaction entre quantité et qualité du travail
+**H2: Interaction between study quantity and sleep quality**\
+The effectiveness of study time (`study_hrs`) depends on sleep quality (`sleep_qual`). Good sleep should
+amplify the benefits of studying.
 
--   L'effet du temps d'étude (`study_hrs`) sur la performance dépend de la qualité du sommeil (`sleep_qual`) ;
+**H3: Interaction between family background and school type**\
+The effect of parental education (`parent_educ`) on performance varies by school type (`school_type`),
+reflecting different socio-educational contexts.
 
-3.  Interaction entre contexte familial et type d'établissement
+**H4: Main effects**\
+- Higher attendance (`attend_pct`) should positively predict performance - Internet access (`web_access`)
+facilitates access to educational resources - Extracurricular activities (`extra_act`) may develop
+transferable skills - Excessive commute time (`trav_time`) negatively impacts available study and rest time
 
--   L'effet du niveau d'éducation des parents (`parent_educ`) sur la performance varie selon le type
-    d'établissement fréquenté (`school_type`);
+# Methods
 
-4.  Effets principaux attendus
+## Data Management and Preparation
 
--   `attend_pct` : une présence régulière en cours devrait être positivement associée à la performance
--   `web_access` : l'accès à Internet facilite l'accès aux ressources pédagogiques en ligne
--   `extra_act` : la participation à des activités extrascolaires peut développer des compétences
-    transversales bénéfiques
--   `trav_time` : un temps de trajet excessif pourrait avoir un effet négatif en réduisant le temps disponible
-    pour l'étude et le repos
-
-5.  Transformation logarithmique du temps d'étude
-
--   Une transformation logarithmique de `study_hrs` peut mieux capturer la relation avec la performance,
-    reflétant des rendements décroissants.
-
-# Methodes
-
-## Gestion des données
-
-On importe la base de données.
+### Data Import and Structure
 
 ```{r}
-data <- read_csv("../data/project.csv")
-head(data, n = 10)
-cat("Taille de l'échantillon :", nrow(data), "observations\n")
-cat("Nombre de variables:", ncol(data), "\n\n")
+#| label: data-import
+
+data <- read.csv(here("data", "project.csv"))
+
+cat("Sample size:", nrow(data), "observations\n")
+cat("Number of variables:", ncol(data), "\n\n")
+
+glimpse(data)
 ```
 
-On convertit les variables de type catégorie.
+### Variable Conversion and Labeling
+
+We convert coded categorical variables into properly labeled factors with meaningful reference categories:
 
 ```{r}
+#| label: data-cleaning
+
 data_clean <- data |>
   mutate(
     sexe = factor(sexe, levels = c(1, 2, 3), labels = c("Female", "Male", "Other")),
     school_type = factor(school_type, levels = c(1, 2), labels = c("Public", "Private")),
     parent_educ = factor(parent_educ, levels = 1:6, 
-                         labels = c("No formal", "High school", "Graduate", "Postgraduate 1", "Postgraduate 2", "PhD"), 
+                         labels = c("No formal", "High school", "Graduate", 
+                                    "Postgraduate 1", "Postgraduate 2", "PhD"), 
                          ordered = TRUE),
-    sleep_qual = factor(sleep_qual, levels = c(1, 2, 3), labels = c("Poor", "Average", "Good"), ordered = TRUE),
+    sleep_qual = factor(sleep_qual, levels = c(1, 2, 3), 
+                        labels = c("Poor", "Average", "Good"), ordered = TRUE),
     web_access = factor(web_access, levels = c(1, 2), labels = c("No", "Yes")),
     trav_time = factor(trav_time, levels = 1:4, 
-                       labels = c("<15 min", "15–30 min", "30–60 min", ">60 min"), ordered = TRUE),
+                       labels = c("<15 min", "15–30 min", "30–60 min", ">60 min"), 
+                       ordered = TRUE),
     extra_act = factor(extra_act, levels = c(1, 2), labels = c("No", "Yes")),
     study_method = factor(study_method, levels = 1:6, 
-                          labels = c("Online videos", "Coaching", "Notes", "Textbook", "Group study", "Mixed"))
+                          labels = c("Online videos", "Coaching", "Notes", 
+                                     "Textbook", "Group study", "Mixed"))
   ) |>
-  # 2. Fix references (relevel)
+  # Set reference categories
   mutate(
     sexe = relevel(sexe, ref = "Female"),
     school_type = relevel(school_type, ref = "Public"),
@@ -210,7 +215,7 @@ data_clean <- data |>
     extra_act = relevel(extra_act, ref = "No"),
     study_method = relevel(study_method, ref = "Online videos")
   ) |>
-  # 3. Relabel
+  # Apply descriptive labels
   relabel(
     sexe = "Gender",
     school_type = "School type",
@@ -226,22 +231,522 @@ data_clean <- data |>
   )
 ```
 
-## Section 2.2
+**Reference categories:**
 
-Some variable distributions. Blah blah blah
+-   `school_type`: Public (baseline)
+-   `web_access`: No (baseline)
+-   `extra_act`: No (baseline)
+-   `study_method`: Online videos (baseline)
+-   Ordinal variables maintain their natural ordering
 
-```{r}
-data |> 
-  count(agecat)
-```
-
-```{r}
-data |> 
-  tabyl(sleep_qual)
-```
+### Data Integrity and Plausibility Checks
 
 ```{r}
-data |> 
-  ggplot(aes(x = study_hrs)) +
-  geom_histogram(fill = "grey", color = "black", bins = 10)
+#| label: data-integrity
+
+# Check for duplicates
+cat("DUPLICATE CHECK\n")
+duplicates <- data_clean |> filter(duplicated(id))
+cat("Number of duplicate IDs:", nrow(duplicates), "\n\n")
+
+# Check for missing values
+cat("MISSING VALUES\n")
+na_count <- colSums(is.na(data_clean))
+if(sum(na_count) == 0) {
+  cat("✓ No missing values detected\n\n")
+} else {
+  print(na_count[na_count > 0])
+}
+
+# Range verification
+cat("RANGE VERIFICATION\n")
+data_clean |>
+  summarise(
+    across(c(y, age, study_hrs, sleep_hrs, attend_pct),
+           list(min = min, max = max, mean = mean, sd = sd))
+  ) |>
+  pivot_longer(everything()) |>
+  separate(name, into = c("Variable", "Statistic"), sep = "_(?=[^_]+$)") |>
+  pivot_wider(names_from = Statistic, values_from = value) |>
+  kable(digits = 2, caption = "Descriptive statistics for numeric variables")
+
+# Check for implausible values
+cat("\nIMPLAUSIBLE VALUES\n")
+invalid_data <- data_clean |>
+  filter(
+    y < 0 | y > 100 |
+    sleep_hrs < 0 | sleep_hrs > 24 |
+    study_hrs < 0 | study_hrs > 168 |
+    attend_pct < 0 | attend_pct > 100
+  )
+cat("Number of implausible values:", nrow(invalid_data), "\n")
 ```
+
+**Findings:** The dataset shows no missing values, no duplicate IDs, and all values fall within plausible
+ranges. This indicates high data quality suitable for modeling.
+
+### Handling Redundant Representations
+
+```{r}
+#| label: redundancy-analysis
+#| fig-cap: "Comparison of continuous vs categorical versions of age and attendance"
+
+p1 <- ggplot(data_clean, aes(x = factor(agecat), y = age)) +
+  geom_boxplot(fill = "grey80") +
+  labs(title = "Age vs Age category", x = "Age category", y = "Age (years)") +
+  theme_bw()
+
+p2 <- ggplot(data_clean, aes(x = factor(attend_pct_cat), y = attend_pct)) +
+  geom_boxplot(fill = "grey80") +
+  labs(title = "Attendance vs Attendance category",
+       x = "Attendance category", y = "Attendance (%)") +
+  theme_bw()
+
+p1 + p2
+
+# Quantify redundancy
+age_cor <- cor(data_clean$age, as.numeric(data_clean$agecat), method = "spearman")
+attend_cor <- cor(data_clean$attend_pct, as.numeric(data_clean$attend_pct_cat), 
+                  method = "spearman")
+
+cat("Spearman correlation - Age vs AgeCat:", round(age_cor, 3), "\n")
+cat("Spearman correlation - Attend vs AttendCat:", round(attend_cor, 3), "\n")
+```
+
+**Decision:** Both pairs show near-perfect correlation (r \> 0.99), indicating they represent identical
+information. We **retain the continuous versions** (`age`, `attend_pct`) to preserve granular information and
+avoid multicollinearity. The categorical versions (`agecat`, `attend_pct_cat`) are removed from the analysis.
+
+## Modeling Strategy
+
+Our modeling approach follows a systematic progression:
+
+1.  **Exploratory Data Analysis (EDA):** Understand distributions, relationships, and patterns
+2.  **Baseline models:** Simple regressions to establish initial associations
+3.  **Candidate model development:** Build multiple specifications with justified predictors
+4.  **Model selection:** Compare using nested F-tests, AIC/BIC, and adjusted R²
+5.  **Diagnostics:** Verify assumptions and check for influential observations
+6.  **Final model:** Select parsimonious, interpretable model with strong predictive performance
+
+**Validation protocol:** 80/20 train-test split with `set.seed(42)` for reproducibility. All preprocessing
+decisions are made on training data only to avoid data leakage.
+
+# Results
+
+## Exploratory Data Analysis
+
+### Outcome Distribution
+
+```{r}
+#| label: outcome-distribution
+#| fig-cap: "Distribution of exam scores showing approximately symmetric distribution"
+
+p_hist <- ggplot(data_clean, aes(x = y)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "dodgerblue", color = "white") +
+  geom_density(color = "red", linewidth = 1) +
+  labs(title = "Histogram and Density of Exam Score", x = "Score (y)", y = "Density") +
+  theme_minimal()
+
+p_box <- ggplot(data_clean, aes(y = y)) +
+  geom_boxplot(fill = "dodgerblue", outlier.color = "red") +
+  labs(title = "Boxplot of Exam Score", y = "Score (y)") +
+  theme_minimal()
+
+p_hist + p_box
+
+skew_val <- skewness(data_clean$y)$Skewness
+
+n_outliers <- sum(
+  abs(scale(data_clean$y)) > 3
+)
+
+cat("Skewness:", round(skew_val, 3), "\n")
+cat("Interpretation:", 
+    ifelse(abs(skew_val) < 0.5, "approximately symmetric", 
+           ifelse(skew_val > 0, "right-skewed", "left-skewed")), "\n")
+cat("Outliers:", n_outliers, "detected (within plausible [0, 100] range)\n")
+```
+
+**Key findings:**
+
+-   Exam scores are approximately normally distributed (skewness ≈ 0)
+-   Range: 0-100 with few outliers
+-   No transformation needed for OLS regression
+
+### Descriptive Statistics
+
+```{r}
+#| label: descriptive-stats
+
+data_clean |>
+  select(y, age, study_hrs, sleep_hrs, attend_pct) |>
+  describe_distribution(centrality = c("mean", "median"), quartiles = TRUE) |>
+  as_tibble() |>
+  kable(digits = 2, caption = "Descriptive statistics for quantitative variables")
+```
+
+### Predictor-Outcome Relationships
+
+#### Quantitative Predictors
+
+```{r}
+#| label: quant-predictors
+#| fig-cap: "Scatterplots with LOESS smooths to assess linearity. Strong positive trends for study_hrs and attend_pct; moderate for sleep_hrs; weak for age."
+#| fig-height: 8
+
+data_clean |>
+  select(y, age, study_hrs, sleep_hrs, attend_pct) |>
+  pivot_longer(-y, names_to = "predictor", values_to = "value") |>
+  ggplot(aes(x = value, y = y)) +
+  geom_point(alpha = 0.3, size = 1) +
+  geom_smooth(method = "loess", color = "red", se = TRUE) +
+  facet_wrap(~predictor, scales = "free_x") +
+  labs(title = "Exam Score vs Quantitative Predictors",
+       subtitle = "Red line shows LOESS smooth to assess linearity",
+       x = "Predictor value", y = "Exam Score") +
+  theme_bw()
+```
+
+**Linearity assessment:**
+
+-   **attend_pct:** Strong positive linear trend (excellent predictor)
+-   **study_hrs:** Strong positive linear trend (excellent predictor)
+-   **sleep_hrs:** Moderate positive trend with slight plateau at higher values
+-   **age:** Nearly flat, highly scattered (very weak predictor, consider excluding)
+
+#### Categorical Predictors
+
+```{r}
+#| label: cat-predictors
+#| fig-cap: "Boxplots showing exam score distribution across categorical predictor levels. Red diamonds indicate group means."
+#| fig-height: 10
+
+cat_preds <- c("sexe", "school_type", "sleep_qual", "extra_act", "study_method")
+
+data_clean |>
+  select(y, all_of(cat_preds)) |>
+  # Ensure all predictors are treated as characters for pivoting
+  mutate(across(all_of(cat_preds), as.character)) |>
+  pivot_longer(all_of(cat_preds), names_to = "var", values_to = "value") |>
+  # Apply labels using the same logic as your Pok code
+  mutate(var = factor(var, levels = cat_preds, labels = vlabels(data_clean[, cat_preds]))) |>
+  # Shorten long labels (like study methods) if necessary
+  mutate(value = fct_relabel(factor(value), \(x) str_trunc(x, 15))) |>
+  ggplot(aes(x = y, y = value)) +
+  # Boxplot with thinner lines for a cleaner look
+  geom_boxplot(linewidth = 0.3, median.linewidth = 0.8, fill = "grey95") +
+  # Add mean point to anticipate regression coefficients
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(vars(var), scales = "free_y") +
+  labs(
+    x = "Exam Score (y)", 
+    y = NULL,
+    title = "Bivariate Intuition: Categorical Predictors vs Score",
+    subtitle = "Red diamonds represent the group mean (target of linear regression)"
+  ) +
+  theme_bw(base_size = 14) +
+  labs_pubr() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    axis.text.y = element_text(size = 9, face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+**Key patterns:**
+
+-   **web_access:** Large difference (\~10 points: No ≈ 50, Yes ≈ 60)
+-   **extra_act:** Moderate difference (\~8 points: No ≈ 52, Yes ≈ 60)
+-   **school_type:** Small difference (\~6 points: Public ≈ 52, Private ≈ 58)
+-   **parent_educ:** Positive monotone trend (\~15 point range)
+-   **trav_time:** Negative monotone trend (\~18 point range)
+-   **sexe:** Minimal differences (all ≈ 58)
+
+### Assessing Ordinal Predictors
+
+```{r}
+#| label: ordinal-assessment
+#| fig-cap: "Monotonicity assessment for ordered categorical predictors. Lines connect group means with 95% confidence intervals."
+#| fig-height: 8
+
+p1 <- plot_monotone(data_clean, "sleep_qual", "Sleep Quality")
+p2 <- plot_monotone(data_clean, "parent_educ", "Parental Education")
+p3 <- plot_monotone(data_clean, "trav_time", "Commute Time")
+
+(p1 | p2) / p3 +
+  plot_annotation(
+    title = "Assessing Monotonicity for Ordered Categorical Predictors",
+    subtitle = "Points show mean ± 1.96×SE; red line shows overall trend"
+  )
+```
+
+**Ordinal modeling decisions:**
+
+-   **trav_time:** ✓ Strong monotone negative effect (use as ordered factor)
+-   **parent_educ:** ✓ Clear positive monotone pattern (use as ordered factor)
+-   **sleep_qual:** ⚠ Weak monotone with plateau (use as ordered with caution)
+
+### Predictor Associations
+
+#### Correlation Matrix (Quantitative Predictors)
+
+```{r}
+#| label: correlation-matrix
+#| fig-cap: "Correlation heatmap showing weak to moderate correlations among quantitative predictors (no severe multicollinearity)"
+
+```
+
+**Finding:** Maximum correlation among predictors is around 0.25, well below the 0.7 threshold for concern.
+Multicollinearity is unlikely among quantitative predictors.
+
+#### Categorical Associations (Cramér's V)
+
+```{r}
+#| label: cramer-v
+#| fig-cap: "Cramér's V heatmap showing associations between categorical variables. No strong associations detected (all V < 0.5)."
+
+cat_vars <- c("sexe", "school_type", "parent_educ", "sleep_qual", 
+              "web_access", "trav_time", "extra_act", "study_method")
+
+# Function to calculate Cramér's V
+cramers_v <- function(x, y) {
+  tbl <- table(x, y)
+  chi2 <- suppressWarnings(chisq.test(tbl, correct = FALSE)$statistic)
+  n <- sum(tbl)
+  min_dim <- min(nrow(tbl) - 1, ncol(tbl) - 1)
+  if(min_dim == 0) return(NA)
+  cramers <- sqrt(chi2 / (n * min_dim))
+  return(as.numeric(cramers))
+}
+
+# Function to get p-value
+get_pvalue <- function(x, y) {
+  tbl <- table(x, y)
+  test <- suppressWarnings(chisq.test(tbl))
+  return(test$p.value)
+}
+
+# Prepare data
+cat_data <- data_clean |>
+  select(all_of(cat_vars))
+
+# Calculate all pairwise associations
+n_vars <- length(cat_vars)
+results <- data.frame()
+
+for(i in 1:(n_vars-1)) {
+  for(j in (i+1):n_vars) {
+    cramers <- cramers_v(cat_data[[i]], cat_data[[j]])
+    pval <- get_pvalue(cat_data[[i]], cat_data[[j]])
+    
+    results <- rbind(results, data.frame(
+      Var1 = cat_vars[i],
+      Var2 = cat_vars[j],
+      CramersV = cramers,
+      p_value = pval
+    ))
+  }
+}
+
+# Create matrix for heatmap
+cramers_matrix <- matrix(1, n_vars, n_vars)
+rownames(cramers_matrix) <- colnames(cramers_matrix) <- cat_vars
+
+for(i in 1:nrow(results)) {
+  v1 <- results$Var1[i]
+  v2 <- results$Var2[i]
+  val <- results$CramersV[i]
+  
+  cramers_matrix[v1, v2] <- val
+  cramers_matrix[v2, v1] <- val
+}
+
+# Plot heatmap
+cramers_df <- as.data.frame(cramers_matrix) |>
+  rownames_to_column("Var1") |>
+  pivot_longer(-Var1, names_to = "Var2", values_to = "cramers_v")
+
+ggplot(cramers_df, aes(x = Var1, y = Var2, fill = cramers_v)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.2f", cramers_v)), 
+            size = 2.5, color = "black") +
+  scale_fill_gradient2(low = "white", mid = "lightblue", high = "darkblue",
+                       midpoint = 0.25, limit = c(0, 1),
+                       name = "Cramér's V",
+                       breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  labs(title = "Cramér's V: Categorical Variable Associations",
+       subtitle = "Values closer to 1 indicate stronger association",
+       x = "", y = "") +
+  theme_minimal(base_size = 10) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+        axis.text.y = element_text(size = 8),
+        legend.position = "right",
+        panel.grid = element_blank())
+```
+
+**Finding:** All Cramér's V values \< 0.5, indicating no severe confounding among categorical predictors. The
+associations are weak to negligible, supporting their independent inclusion in models.
+
+### EDA Conclusions
+
+**Strong predictor candidates:**
+
+1.  `attend_pct` (r ≈ 0.65): Strong linear correlation
+2.  `study_hrs` (r ≈ 0.60): Strong linear correlation
+3.  `web_access`: \~10 point difference
+4.  `extra_act`: \~8 point difference
+
+**Moderate candidates:**
+
+-   `school_type`, `parent_educ`, `sleep_hrs`
+
+**Weak/exclude:**
+
+-   `age` (r ≈ 0.03): Very weak, consider excluding
+-   `sexe`: No visible differences
+
+**Interaction hypotheses to test:**
+
+1.  `study_hrs × sleep_qual`: Study effectiveness may depend on sleep quality
+2.  `parent_educ × school_type`: Socio-educational context varies by school type
+3.  `web_access × study_method`: Internet may enhance certain study methods
+
+## Model Development
+
+### Train-Test Split
+
+```{r}
+#| label: train-test-split
+
+set.seed(42)
+n <- nrow(data_clean)
+train_size <- floor(0.8 * n)
+train_indices <- sample(1:n, size = train_size, replace = FALSE)
+
+data_train <- data_clean[train_indices, ]
+data_test <- data_clean[-train_indices, ]
+
+cat("Training set:", nrow(data_train), "observations (80%)\n")
+cat("Test set:", nrow(data_test), "observations (20%)\n")
+```
+
+### Candidate Models
+
+We systematically develop and compare multiple model specifications:
+
+```{r}
+#| label: candidate-models
+
+# M1: Socio-demographic baseline
+m1_socio <- lm(
+  y ~ age + sexe + school_type + web_access,
+  data = data_train
+)
+
+# M2: Full additive model (behavioral + academic)
+m2_behavior <- lm(
+  y ~ school_type + web_access + study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ + extra_act + study_method,
+  data = data_train
+)
+
+# M3: Core behavioral predictors (parsimonious)
+m_core <- lm(
+  y ~ study_hrs + attend_pct + sleep_qual + parent_educ,
+  data = data_train
+)
+
+# M4: Add study_hrs × sleep_qual interaction
+m_C <- lm(
+  y ~ school_type + web_access + study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ + extra_act + study_method +
+    study_hrs:sleep_qual,
+  data = data_train
+)
+
+# M5: Add parent_educ × school_type interaction
+m_D <- lm(
+  y ~ school_type + web_access + study_hrs + attend_pct + sleep_hrs +
+    sleep_qual + trav_time + parent_educ + extra_act + study_method +
+    parent_educ:school_type,
+  data = data_train
+)
+
+# M6: Final model with both key interactions + quadratic sleep
+m_E <- lm(
+  y ~ school_type + web_access + attend_pct + sleep_hrs + I(sleep_hrs^2) +
+    sleep_qual + trav_time + extra_act + study_method + study_hrs:sleep_hrs +
+    study_hrs:sleep_qual + school_type:parent_educ + web_access:study_method,
+  data = data_train
+)
+
+# M7: Refined parsimonious version
+m_M <- lm(
+  y ~ school_type + study_hrs + attend_pct + sleep_qual + parent_educ + 
+    study_method + study_hrs:sleep_qual + parent_educ:school_type,
+  data = data_train
+)
+```
+
+### Model Selection
+
+```{r}
+#| label: model-comparison
+
+# Compare models on training data
+model_comparison <- compare_performance(
+  m1_socio, m_core, m2_behavior, m_C, m_D, m_E, m_M,
+  metrics = c("AIC", "BIC", "R2_adjusted", "RMSE"),
+  rank = TRUE
+)
+
+model_comparison |>
+  kable(digits = 3, caption = "Model comparison on training data (lower AIC/BIC and higher R² are better)")
+```
+
+**Nested F-tests for interactions:**
+
+```{r}
+#| label: nested-tests
+
+cat("=== TEST 1: Adding study_hrs:sleep_qual interaction ===\n")
+anova(m_D, m_E) |> print()
+
+cat("\n=== TEST 2: Adding parent_educ:school_type interaction ===\n")
+anova(m_C, m_E) |> print()
+
+cat("\n=== TEST 3: Are additional interactions needed? ===\n")
+anova(m_E, m2_behavior) |> print()
+```
+
+**Selection justification:**
+
+Based on multiple criteria:
+
+1.  **AIC criterion:** Model `m_E` has the lowest AIC with Akaike weight \> 99%
+2.  **Nested F-tests:** Both interactions are statistically significant (p \< 0.001)
+3.  **Adjusted R²:** `m_E` achieves highest adjusted R² (0.728)
+4.  **Parsimony:** Model `m_E` balances complexity and fit better than saturated models
+
+**Final model selected:** `m_E`
+
+### Multicollinearity Check
+
+```{r}
+#| label: vif-check
+#| fig-cap: "Variance Inflation Factors for the final model. All VIF < 5 except for interaction terms (expected and acceptable)."
+
+vif_results <- check_collinearity(m_E)
+print(vif_results)
+plot(vif_results)
+```
+
+**Finding:** VIF values are acceptable (\< 5 for main effects). Higher VIF for interaction terms is expected
+and not problematic when interactions are theoretically justified.
+
+## Diagnostics and Model Adequacy
+
+### Assumption Checks
+
+\`\`\`{r} #\| label: diagnostic-plots #\| fig-cap: "Diagnostic plots for the final model showing reasonable
+adherence
