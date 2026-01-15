@@ -1104,7 +1104,7 @@ cat(sprintf("  Predicted Score: %.1f [95%% CI: %.1f, %.1f]\n\n",
 ```{r}
 #| label: scenario-predictions2
 
-# Profile 2: High-achieving student
+# Profile 2: Bad student
 profile_2 <- data.frame(
   school_type = factor("Public", levels = levels(data_train$school_type)),
   web_access = factor("Yes", levels = levels(data_train$web_access)),
@@ -1133,19 +1133,21 @@ cat(sprintf("DIFFERENCE: %.1f points (%.1f%% gap)\n\n",
 
 ```{r}
 #| label: scenario-predictions3
+#| echo: false
+#| results: markup
+
 # Intervention scenario
 profile_1_improved <- profile_1
-profile_1_improved$study_hrs <- 15
-profile_1_improved$attend_pct <- 85
+profile_1_improved$attend_pct <- 80
 profile_1_improved$sleep_qual <- factor("Good", levels = levels(data_train$sleep_qual))
-profile_1_improved$sleep_hrs <- 7.5
+profile_1_improved$sleep_hrs <- 9
 
 pred_1_improved <- predict(mod_final, newdata = profile_1_improved, 
                            interval = "confidence", level = 0.95)
 
-cat("INTERVENTION: Improving Profile 1\n
-      Changes: 5→15 hrs study, 60→85% attendance\n
-              Poor→Good sleep, 5→7.5 hrs sleep\n")
+cat("INTERVENTION: Improving Profile 2\n
+      Changes: 51→85% attendance\n
+        Poor→Good sleep, 5→9 hrs sleep\n")
 cat(sprintf("  New Predicted: %.1f [%.1f, %.1f]\n",
             pred_1_improved[1], pred_1_improved[2], pred_1_improved[3]))
 cat(sprintf("  Improvement: +%.1f points (+%.1f%%)\n",
@@ -1157,6 +1159,8 @@ cat(sprintf("  Improvement: +%.1f points (+%.1f%%)\n",
 
 ```{r}
 #| label: model-fit
+#| echo: false
+#| results: markup
 
 model_sum <- summary(mod_final)
 
@@ -1175,8 +1179,9 @@ cat(sprintf("Observations:      %d (training set)\n", nobs(mod_final)))
 
 ```{r}
 #| label: validation-setup
+#| echo: false
+#| results: markup
 
-cat("=== VALIDATION PROTOCOL ===\n\n")
 cat("Strategy: 80/20 train-test split\n")
 cat("Seed: 42 (for reproducibility)\n")
 cat("Training set:", nrow(data_train), "observations\n")
@@ -1193,6 +1198,8 @@ cat("Evaluation metrics:\n
 
 ```{r}
 #| label: baseline-model
+#| echo: false
+#| results: markup
 
 # Baseline: predict training mean
 y_train_mean <- mean(data_train$y, na.rm = TRUE)
@@ -1222,6 +1229,8 @@ cat(sprintf("  Out-of-sample R²: %.4f\n", r2_oos_baseline))
 
 ```{r}
 #| label: final-model-performance
+#| echo: false
+#| results: markup
 
 # Predictions on test set
 y_pred_final <- predict(mod_final, newdata = data_test)
@@ -1322,6 +1331,8 @@ print(p_resid)
 ```{r}
 #| label: conclusion
 #| fig-cap: "Conclusion"
+#| echo: false
+#| results: markup
 
 results_mE <- list(
   mse = mse_final,
@@ -1340,19 +1351,18 @@ cat("  - 80/20 train-test split (seed = 42)\n")
 cat("  - No data leakage: all models fit on training data only\n")
 cat("  - Test set (n =", nrow(data_test), ") held out for evaluation\n\n")
 
-cat("FINAL MODEL (m_E) PERFORMANCE:\n")
-cat(sprintf("  MSE:              %.3f\n", results_mE$mse))
-cat(sprintf("  RMSE:             %.3f points\n", results_mE$rmse))
-cat(sprintf("  Out-of-sample R²: %.4f (%.1f%% of variance explained)\n", 
-            results_mE$r2_oos, results_mE$r2_oos * 100))
-cat(sprintf("  MedAE:            %.3f points\n", results_mE$medae))
-cat(sprintf("  Improvement over baseline: %.1f%% MSE reduction\n\n", 
-            results_table$MSE_Reduction_Pct[results_table$Model == "m_E (FINAL)"]))
+cat("
+### FINAL MODEL (m_E) PERFORMANCE
 
-cat("CALIBRATION:\n")
-cat(sprintf("  Slope:     %.3f (ideal = 1.0)\n", calibration_slope))
-cat(sprintf("  Intercept: %.3f (ideal = 0.0)\n", calibration_intercept))
-cat("  Assessment: Well-calibrated predictions\n\n")
+- MSE:              ", sprintf("%.3f", results_mE$mse), "
+- RMSE:             ", sprintf("%.3f points", results_mE$rmse), "
+- Out-of-sample R²: ", sprintf("%.4f (%.1f%%)", results_mE$r2_oos, results_mE$r2_oos*100), "
+- MedAE:            ", sprintf("%.3f points", results_mE$medae), "
+
+### CALIBRATION
+- Slope:     ", sprintf("%.3f", calibration_slope), " (ideal = 1.0)
+- Intercept: ", sprintf("%.3f", calibration_intercept), " (ideal = 0.0)
+")
 
 cat("MODEL PARSIMONY:\n")
 cat(sprintf("  Number of parameters: %d\n", results_mE$n_params))
