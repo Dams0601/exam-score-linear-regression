@@ -95,6 +95,7 @@ library("scales")
 library("see")
 library("tidyverse")
 library("interactions")
+library("emmeans")
 
 source(here("script", "helper_functions.R"))
 ```
@@ -651,37 +652,61 @@ cat("Training set:", nrow(data_train), "observations (80%)\n")
 cat("Test set:", nrow(data_test), "observations (20%)\n")
 ```
 
-### Assessing Need for Transformations
+## Transformation Assessment
 
-Before building models, we check whether key predictors require transformation.
+Before building models, we assess whether key predictors require transformation to improve linearity and model
+fit.
 
-#### Sleep Hours: Linear vs Quadratic
+### Sleep Hours: Linear vs Quadratic
 
 ```{r}
 #| label: transformation-sleep
-#| fig-cap: "Sleep hours shows a quadratic (inverted-U) relationship with exam scores"
+#| fig-cap: "Sleep hours shows a quadratic (inverted-U) relationship with exam scores. The quadratic fit (blue) captures the pattern better than linear (red)."
+#| fig-height: 6
 
-ggplot(data_clean, aes(x = sleep_hrs, y = y)) +
+p_fit <- ggplot(data_clean, aes(x = sleep_hrs, y = y)) +
   geom_point(alpha=0.3, color="darkgrey") +
   stat_smooth(method="lm", formula=y~x, color="red", se=FALSE, linewidth=1.2) +
   stat_smooth(method="lm", formula=y~x+I(x^2), color="blue", se=FALSE, linewidth=1.2) +
   labs(
     title="Sleep Hours: Linear vs Quadratic Fit",
-    subtitle="Red = Linear | Blue = Quadratic (better fit)",
+    subtitle="Red = Linear | Blue = Quadratic (inverted-U pattern)",
     x="Sleep hours", y="Exam Score"
   ) +
   theme_minimal()
 
 # Residual plot from linear model
 lm_linear <- lm(y ~ sleep_hrs, data=data_clean)
-residuals <- resid(lm_linear)
+lm_quad <- lm(y ~ sleep_hrs + I(sleep_hrs^2), data=data_clean)
+residuals_lin <- resid(lm_linear)
 
-plot(data_clean$sleep_hrs, residuals,
-     xlab="Sleep hours", ylab="Residuals",
-     main="Residuals vs Sleep Hours (Linear Model)",
-     pch=19, col="darkgrey")
-lines(lowess(data_clean$sleep_hrs, residuals), col="red", lwd=2)
-abline(h=0, lty=2, col="blue")
+p_resid <- ggplot(data.frame(sleep_hrs = data_clean$sleep_hrs, resid = residuals_lin),
+                  aes(x = sleep_hrs, y = resid)) +
+  geom_point(alpha = 0.3, color = "darkgrey") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "blue") +
+  geom_smooth(method = "loess", color = "red", se = TRUE) +
+  labs(
+    title = "Residuals vs Sleep Hours (Linear Model)",
+    subtitle = "Systematic curvature indicates need for quadratic term",
+    x = "Sleep hours",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+
+p_fit / p_resid
+
+# Formal test
+cat("\n=== NESTED MODEL TEST: Linear vs Quadratic ===\n")
+anova_sleep <- anova(lm_linear, lm_quad)
+print(anova_sleep)
+
+cat("\nConclusion:")
+if(anova_sleep$`Pr(>F)`[2] < 0.05) {
+  cat(" Quadratic term is statistically significant (p < 0.05)\n")
+  cat(" → We will include I(sleep_hrs^2) in candidate models\n")
+} else {
+  cat(" Quadratic term not significant (p >= 0.05)\n")
+}
 ```
 
 **Decision**: The quadratic fit captures the inverted-U pattern better. Residuals from the linear model show
@@ -939,19 +964,93 @@ Based on multiple criteria:
 #| label: diagnostic-plots
 #| fig-cap: "Diagnostic plots for the final model showing reasonable adherence to regression assumptions: (1) no systematic patterns in residuals, (2) approximately normal residuals, (3) stable variance, (4) no high-leverage outliers."
 #| fig-height: 8
+#| results: markup
 
 mod_final = m4_final
 
-p1 <- resid_vs_order(mod_final)
-p2 <- resid_stand_hist(mod_final)
-p3 <- resid_stand_dens(mod_final)
-p4 <- resid_stand_qq(mod_final)
+# Calculer les résidus standardisés et studentisés
+mod_final_augmented <- broom::augment(mod_final, data = data_train)
+mod_final_augmented$.rstudent <- rstudent(mod_final)
 
-(p1 + p2 + p3 + p4) +
-  plot_annotation(
-    title = "Diagnostic Plots for Final Model",
-    subtitle = "Assessment of regression assumptions"
-  )
+# 1. Index plot des résidus studentisés
+p1 <- ggplot(mod_final_augmented, aes(x = seq_along(.rstudent), y = .rstudent)) +
+  geom_point(alpha = 0.5, size = 1) +
+  geom_hline(yintercept = c(-3, -2, 0, 2, 3), 
+             linetype = c("dashed", "dotted", "solid", "dotted", "dashed"),
+             color = c("red", "orange", "black", "orange", "red")) +
+  labs(
+    title = "Studentized Residuals vs Observation Index",
+    x = "Observation Index",
+    y = "Studentized Residuals"
+  ) +
+  theme_minimal()
+
+# 2. Histogramme des résidus studentisés
+p2 <- ggplot(mod_final_augmented, aes(x = .rstudent)) +
+  geom_histogram(aes(y = ..density..), bins = 30, 
+                 fill = "steelblue", alpha = 0.7, color = "black") +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 1),
+                color = "red", size = 1.2) +
+  labs(
+    title = "Distribution of Studentized Residuals",
+    subtitle = "Red curve = Standard Normal N(0,1)",
+    x = "Studentized Residuals",
+    y = "Density"
+  ) +
+  theme_minimal()
+
+# 3. Q-Q plot des résidus studentisés
+p3 <- ggplot(mod_final_augmented, aes(sample = .rstudent)) +
+  stat_qq(alpha = 0.5) +
+  stat_qq_line(color = "red", size = 1) +
+  labs(
+    title = "Q-Q Plot: Studentized Residuals",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+
+# 4. Résidus studentisés vs fitted values
+p4 <- ggplot(mod_final_augmented, aes(x = .fitted, y = .rstudent)) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  geom_hline(yintercept = c(-3, 0, 3), 
+             linetype = c("dashed", "solid", "dashed"),
+             color = c("red", "black", "red")) +
+  geom_smooth(method = "loess", se = TRUE, color = "blue") +
+  labs(
+    title = "Studentized Residuals vs Fitted Values",
+    subtitle = "Horizontal pattern expected; points beyond ±3 are outliers",
+    x = "Fitted Values",
+    y = "Studentized Residuals"
+  ) +
+  theme_minimal()
+
+# Assemblage des 4 plots
+(p1 + p2) / (p3 + p4)
+
+# Identification des outliers
+outliers_studentized <- mod_final_augmented %>%
+  filter(abs(.rstudent) > 3) %>%
+  select(id, y, .fitted, .rstudent) %>%
+  arrange(desc(abs(.rstudent)))
+
+cat("\n=== OUTLIER DETECTION (Studentized Residuals) ===\n")
+cat(sprintf("Number of observations with |studentized residual| > 3: %d (%.2f%%)\n",
+            nrow(outliers_studentized),
+            100 * nrow(outliers_studentized) / nrow(data_train)))
+
+if(nrow(outliers_studentized) > 0) {
+  cat("\nMost extreme outliers:\n")
+  print(head(outliers_studentized, 10))
+  
+  cat("\nInterpretation:\n")
+  cat("- Studentized residuals follow a t-distribution\n")
+  cat("- Values > |3| indicate potential outliers (expected: ~0.3% if normal)\n")
+  cat(sprintf("- Observed rate: %.2f%%\n", 
+              100 * nrow(outliers_studentized) / nrow(data_train)))
+} else {
+  cat("\n✓ No extreme outliers detected (all |rstudent| ≤ 3)\n")
+}
 ```
 
 ### Residuals vs Fitted
@@ -1168,6 +1267,8 @@ coef_table |>
 
 ```{r}
 #| label: key-interpretations
+#| echo: false
+#| results: markup
 
 # Attendance (log-transformed)
 attend_coef <- coef(mod_final)["log(attend_pct)"]
