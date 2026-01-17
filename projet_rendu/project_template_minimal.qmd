@@ -709,8 +709,9 @@ if(anova_sleep$`Pr(>F)`[2] < 0.05) {
 }
 ```
 
-**Decision**: The quadratic fit captures the inverted-U pattern better. Residuals from the linear model show
-systematic curvature. We will include `I(sleep_hrs^2)` in candidate models.
+**Decision**: The quadratic fit captures the inverted-U pattern significantly better than linear (p \< 0.001).
+Residuals from the linear model show systematic curvature. We will include `I(sleep_hrs^2)` in candidate
+models.
 
 #### Attendance: Linear vs Log
 
